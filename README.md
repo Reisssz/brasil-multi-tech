@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Brasil Multi Tech
 
-## Getting Started
+E-commerce de celulares (novos e seminovos), notebooks e acessórios. Next.js (App Router) + TypeScript
++ Tailwind CSS v4, seguindo o briefing de posicionamento tipo Trocafone com identidade visual própria
+(fundo claro, laranja como cor de marca).
 
-First, run the development server:
+## Rodando localmente
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## O que já está implementado
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Home completa**: header com busca/autocomplete, hero com banner rotativo, barra de confiança,
+  vitrine de categorias, ofertas em destaque, **simulador de parcelamento interativo**, seção de prova
+  social/avaliações e footer.
+- **Listagem por categoria** (`/categoria/[slug]`, incluindo `/categoria/ofertas`) com filtros de marca,
+  condição, armazenamento e preço, mais ordenação.
+- **Página de produto** (`/produto/[slug]`) com galeria com zoom, seletor de cor/armazenamento/condição,
+  calculadora de parcelas, avaliações, produtos relacionados, dados estruturados `schema.org/Product`
+  para SEO e barra fixa de compra no mobile.
+- **Carrinho** (`/carrinho`) e **checkout em accordion** (`/checkout`: dados → entrega → pagamento) com
+  Pix (desconto automático), boleto e cartão parcelado.
+- **Rastreamento de pedido** (`/pedido/rastreio`), **central de ajuda/FAQ** (`/ajuda`) e **garantia e
+  trocas** (`/garantia`).
+- SEO técnico: metadata por página, `sitemap.xml`, `robots.txt`, JSON-LD de produto.
 
-## Learn More
+## O que é mock/local (e o que falta para produção)
 
-To learn more about Next.js, take a look at the following resources:
+Não há credenciais de serviços externos configuradas neste ambiente, então os pontos de integração
+foram implementados como uma camada clara e isolada, pronta para ser trocada por serviços reais:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Área | Estado atual | Para produção |
+|---|---|---|
+| Catálogo de produtos | `lib/data/products.ts` e `lib/data/categories.ts` (mock, em memória) | Migrar para Supabase/Firebase com tabelas de produto/variante/estoque |
+| Imagens de produto | Placeholders SVG neutros gerados em `components/ui/ProductImage.tsx` | Substituir por fotos reais + `next/image` com CDN |
+| Carrinho | `lib/cart-context.tsx`, `useSyncExternalStore` + `localStorage` | Pode seguir client-side, ou sincronizar com conta do usuário |
+| Pedidos / rastreio | `lib/orders.ts`, gerados e lidos do `localStorage` do navegador | Persistir em banco real, com status atualizado via webhook |
+| Pagamento | Stubs em `app/api/mercadopago/*` (comentários com os próximos passos) | Integrar SDK oficial do Mercado Pago (Checkout Pro ou Transparente) |
+| Busca | Filtro client-side simples em `components/layout/SearchBar.tsx` | Trocar por Algolia/Meilisearch para autocomplete indexado |
+| Painel administrativo | Não implementado | Criar área `/admin` para gestão de estoque, preços e pedidos |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Regras comerciais (desconto Pix, parcelas sem juros, juros das parcelas acima do limite) ficam
+centralizadas em `lib/pricing.ts` (`PRICING_RULES`) — ajustar ali para mudar as condições globais.
 
-## Deploy on Vercel
+## Estrutura
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/                rotas (App Router)
+components/
+  home/              seções da home (hero, vitrine, simulador, prova social)
+  layout/            header, footer, barra de confiança, busca
+  product/           card, galeria, listagem com filtros, detalhe do produto
+  ui/                primitivos (logo, badge, rating, preço, faq, imagem de produto)
+lib/
+  data/              catálogo mock (produtos e categorias)
+  pricing.ts         formatação de moeda, Pix, parcelamento
+  cart-context.tsx   carrinho (client-side)
+  orders.ts          pedidos mock (client-side)
+  config.ts          constantes do site (WhatsApp, métricas, etc.)
+```
