@@ -23,7 +23,7 @@ export function InstallmentSimulator() {
           className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand/10 blur-[80px]"
         />
         <div className="grid lg:grid-cols-2 gap-10 p-6 sm:p-10">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-w-0">
             <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 text-brand text-xs font-semibold px-3 py-1.5">
               Simulador de parcelamento
             </span>
@@ -34,12 +34,12 @@ export function InstallmentSimulator() {
               Sem letras miúdas: o valor que aparece aqui é o mesmo que fecha no carrinho.
             </p>
 
-            <label className="flex flex-col gap-1.5 mt-2">
+            <label className="flex flex-col gap-1.5 mt-2 min-w-0">
               <span className="text-xs font-medium text-[#b9bbc2]">Produto</span>
               <select
                 value={productId}
                 onChange={(e) => setProductId(e.target.value)}
-                className="h-11 rounded-xl bg-white/10 border border-white/10 px-3 text-sm outline-none focus:border-brand"
+                className="w-full min-w-0 h-11 rounded-xl bg-white/10 border border-white/10 px-3 text-sm outline-none focus:border-brand"
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id} className="text-black">
@@ -69,7 +69,7 @@ export function InstallmentSimulator() {
             </label>
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-w-0">
             <div className="rounded-2xl bg-white text-foreground p-6 flex flex-col gap-4 shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-transform duration-300">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted">Preço à vista no Pix</span>
