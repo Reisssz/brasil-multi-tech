@@ -4,6 +4,7 @@ import { useState } from "react";
 import { products } from "@/lib/data/products";
 import { getMinPriceCents } from "@/lib/data/products";
 import { calculateInstallment, formatBRL, getPixPriceCents, PRICING_RULES } from "@/lib/pricing";
+import { Reveal } from "../ui/Reveal";
 
 export function InstallmentSimulator() {
   const [productId, setProductId] = useState(products[0].id);
@@ -16,7 +17,11 @@ export function InstallmentSimulator() {
 
   return (
     <section id="simulador" className="mx-auto max-w-7xl px-4 sm:px-6 py-14 scroll-mt-20">
-      <div className="rounded-3xl bg-[#14161a] text-white overflow-hidden">
+      <Reveal as="div" className="rounded-3xl bg-[#14161a] text-white overflow-hidden relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-brand/10 blur-[80px]"
+        />
         <div className="grid lg:grid-cols-2 gap-10 p-6 sm:p-10">
           <div className="flex flex-col gap-4">
             <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 text-brand text-xs font-semibold px-3 py-1.5">
@@ -65,14 +70,16 @@ export function InstallmentSimulator() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl bg-white text-foreground p-6 flex flex-col gap-4">
+            <div className="rounded-2xl bg-white text-foreground p-6 flex flex-col gap-4 shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-transform duration-300">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted">Preço à vista no Pix</span>
                 <span className="inline-flex items-center rounded-full bg-success-light text-success text-xs font-semibold px-2 py-0.5">
                   -{PRICING_RULES.pixDiscountPercent}%
                 </span>
               </div>
-              <span className="text-3xl font-extrabold tabular-nums">{formatBRL(pixPriceCents)}</span>
+              <span key={pixPriceCents} className="animate-fade-in-fast text-3xl font-extrabold tabular-nums">
+                {formatBRL(pixPriceCents)}
+              </span>
 
               <div className="h-px bg-border" />
 
@@ -85,7 +92,10 @@ export function InstallmentSimulator() {
                 )}
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tabular-nums">
+                <span
+                  key={`${installments}-${result.installmentCents}`}
+                  className="animate-fade-in-fast text-3xl font-extrabold tabular-nums"
+                >
                   {installments}x {formatBRL(result.installmentCents)}
                 </span>
               </div>
@@ -100,7 +110,7 @@ export function InstallmentSimulator() {
             </p>
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

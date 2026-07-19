@@ -1,4 +1,5 @@
 import { PRICING_RULES } from "@/lib/pricing";
+import { Reveal } from "../ui/Reveal";
 
 const items = [
   {
@@ -26,13 +27,23 @@ export function TrustBar() {
     <section className="bg-surface border-y border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {items.map((item) => (
-            <div key={item.label} className="flex items-center gap-2.5">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          {items.map((item, i) => (
+            <Reveal key={item.label} delay={i * 60} className="group flex items-center gap-2.5">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--brand)"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-6"
+              >
                 {item.icon}
               </svg>
               <span className="text-xs sm:text-sm font-medium text-foreground leading-tight">{item.label}</span>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>

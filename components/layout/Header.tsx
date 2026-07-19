@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "../ui/Logo";
 import { SearchBar } from "./SearchBar";
 import { useCart } from "@/lib/cart-context";
@@ -19,9 +19,35 @@ function Chevron() {
 export function Header() {
   const { totalCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [cartBounce, setCartBounce] = useState(false);
+  const cartMounted = useRef(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 4);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!cartMounted.current) {
+      cartMounted.current = true;
+      return;
+    }
+    setCartBounce(true);
+    const id = setTimeout(() => setCartBounce(false), 500);
+    return () => clearTimeout(id);
+  }, [totalCount]);
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-border">
+    <header
+      className={`sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-border transition-shadow duration-300 ${
+        scrolled ? "shadow-[0_4px_16px_rgba(16,24,40,0.08)]" : ""
+      }`}
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex items-center gap-4 sm:gap-6 h-20">
           <Logo />
@@ -45,7 +71,7 @@ export function Header() {
 
             <Link
               href="/carrinho"
-              className="relative inline-flex items-center justify-center rounded-full w-11 h-11 border border-border hover:border-brand transition-colors"
+              className="relative inline-flex items-center justify-center rounded-full w-11 h-11 border border-border hover:border-brand hover:scale-105 active:scale-95 transition-all"
               aria-label="Carrinho"
             >
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
@@ -60,7 +86,11 @@ export function Header() {
                 <circle cx="18" cy="21" r="1.4" fill="currentColor" />
               </svg>
               {totalCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[19px] h-[19px] px-1 rounded-full bg-brand text-brand-foreground text-[11px] font-bold">
+                <span
+                  className={`absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[19px] h-[19px] px-1 rounded-full bg-brand text-brand-foreground text-[11px] font-bold ${
+                    cartBounce ? "animate-bounce-once" : ""
+                  }`}
+                >
                   {totalCount}
                 </span>
               )}
@@ -68,11 +98,35 @@ export function Header() {
 
             <button
               className="md:hidden inline-flex items-center justify-center rounded-full w-11 h-11 border border-border"
-              aria-label="Abrir menu"
+              aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
             >
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <path
+                  d="M3 5h14"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  className="origin-center transition-transform duration-300"
+                  style={mobileOpen ? { transform: "translateY(5px) rotate(45deg)" } : undefined}
+                />
+                <path
+                  d="M3 10h14"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  className="transition-opacity duration-200"
+                  style={mobileOpen ? { opacity: 0 } : undefined}
+                />
+                <path
+                  d="M3 15h14"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  className="origin-center transition-transform duration-300"
+                  style={mobileOpen ? { transform: "translateY(-5px) rotate(-45deg)" } : undefined}
+                />
               </svg>
             </button>
           </div>
@@ -105,45 +159,55 @@ export function Header() {
         </nav>
       </div>
 
-      {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-surface px-4 py-4 flex flex-col gap-4">
-          <SearchBar />
-          <div className="flex flex-col gap-1">
-            {categories.map((c) => (
+      <div
+        className="md:hidden grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: mobileOpen ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t border-border bg-surface px-4 py-4 flex flex-col gap-4">
+            <SearchBar />
+            <div className="flex flex-col gap-1">
+              {categories.map((c, i) => (
+                <Link
+                  key={c.slug}
+                  href={`/categoria/${c.slug}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="py-2 text-sm font-medium text-foreground border-b border-border/60 transition-all duration-300"
+                  style={{
+                    transitionDelay: mobileOpen ? `${i * 40}ms` : "0ms",
+                    opacity: mobileOpen ? 1 : 0,
+                    transform: mobileOpen ? "translateX(0)" : "translateX(-8px)",
+                  }}
+                >
+                  {c.name}
+                </Link>
+              ))}
               <Link
-                key={c.slug}
-                href={`/categoria/${c.slug}`}
+                href="/sobre"
                 onClick={() => setMobileOpen(false)}
                 className="py-2 text-sm font-medium text-foreground border-b border-border/60"
               >
-                {c.name}
+                Sobre nós
               </Link>
-            ))}
-            <Link
-              href="/sobre"
-              onClick={() => setMobileOpen(false)}
-              className="py-2 text-sm font-medium text-foreground border-b border-border/60"
+              <Link
+                href="/contato"
+                onClick={() => setMobileOpen(false)}
+                className="py-2 text-sm font-medium text-foreground border-b border-border/60"
+              >
+                Contato
+              </Link>
+            </div>
+            <a
+              href={whatsappLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand text-brand-foreground h-11 text-sm font-semibold active:scale-95 transition-transform"
             >
-              Sobre nós
-            </Link>
-            <Link
-              href="/contato"
-              onClick={() => setMobileOpen(false)}
-              className="py-2 text-sm font-medium text-foreground border-b border-border/60"
-            >
-              Contato
-            </Link>
+              Fale com um consultor
+            </a>
           </div>
-          <a
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-brand text-brand-foreground h-11 text-sm font-semibold"
-          >
-            Fale com um consultor
-          </a>
         </div>
-      )}
+      </div>
     </header>
   );
 }

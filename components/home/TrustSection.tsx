@@ -2,6 +2,7 @@ import Link from "next/link";
 import { StarRating } from "../ui/StarRating";
 import { SITE } from "@/lib/config";
 import { products } from "@/lib/data/products";
+import { Reveal } from "../ui/Reveal";
 
 const stats = [
   { value: `${(SITE.devicesDelivered / 1000).toFixed(0)}mil+`, label: "aparelhos entregues" },
@@ -28,25 +29,33 @@ export function TrustSection() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 py-14">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-surface border border-border p-5 flex flex-col gap-1">
+        {stats.map((s, i) => (
+          <Reveal
+            key={s.label}
+            delay={i * 60}
+            className="rounded-2xl bg-surface border border-border p-5 flex flex-col gap-1 hover:border-brand/50 hover:-translate-y-1 transition-all"
+          >
             <span className="text-2xl sm:text-3xl font-extrabold text-brand-dark tabular-nums">{s.value}</span>
             <span className="text-xs sm:text-sm text-muted">{s.label}</span>
-          </div>
+          </Reveal>
         ))}
       </div>
 
-      <div className="flex items-end justify-between mb-6">
+      <Reveal className="flex items-end justify-between mb-6">
         <div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">Quem compra, recomenda</h2>
           <p className="text-muted mt-1">Avaliações reais de clientes verificados.</p>
         </div>
         <StarRating rating={SITE.averageRating} size="md" />
-      </div>
+      </Reveal>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {featured.map(({ review: r, productName, productSlug }) => (
-          <div key={r.id} className="rounded-2xl bg-surface border border-border p-5 flex flex-col gap-3">
+        {featured.map(({ review: r, productName, productSlug }, i) => (
+          <Reveal
+            key={r.id}
+            delay={(i % 3) * 70}
+            className="rounded-2xl bg-surface border border-border p-5 flex flex-col gap-3 hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 transition-all"
+          >
             <div className="flex items-center gap-3">
               <span className="flex items-center justify-center w-9 h-9 rounded-full bg-brand-light text-brand-dark text-xs font-bold shrink-0">
                 {initials(r.author)}
@@ -64,7 +73,7 @@ export function TrustSection() {
             >
               Produto escolhido: {productName}
             </Link>
-          </div>
+          </Reveal>
         ))}
       </div>
     </section>
