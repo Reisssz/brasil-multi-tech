@@ -2,6 +2,38 @@ import { obterTokenValido } from "./oauth";
 
 const BASE_URL = process.env.MELHOR_ENVIO_BASE_URL!;
 
+/**
+ * Erro estruturado da API do Melhor Envio — carrega os campos inválidos
+ * (`errors`) para que quem chamar possa mostrar uma mensagem específica em
+ * vez de "não foi possível calcular o frete".
+ */
+export class MelhorEnvioApiError extends Error {
+  status: number;
+  errors: Record<string, string[]> | null;
+
+  constructor(status: number, corpo: { message?: string; errors?: Record<string, string[]> } | null) {
+    super(corpo?.message ?? `Melhor Envio respondeu ${status}`);
+    this.name = "MelhorEnvioApiError";
+    this.status = status;
+    this.errors = corpo?.errors ?? null;
+  }
+
+  /** Primeira mensagem de erro de campo, já traduzida para o que o usuário reconhece. */
+  mensagemAmigavel(): string {
+    if (this.errors?.postal_code) {
+      // cep_origem inválido é problema de CONFIGURAÇÃO da loja (remetente),
+      // não do CEP que o cliente digitou — nunca deve aparecer como se
+      // fosse culpa do cliente.
+      return "Não foi possível calcular o frete: o CEP de origem da loja está configurado incorretamente. Contate o suporte.";
+    }
+    if (this.errors) {
+      const primeiraMsg = Object.values(this.errors)[0]?.[0];
+      if (primeiraMsg) return primeiraMsg;
+    }
+    return this.message;
+  }
+}
+
 async function melhorEnvioFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await obterTokenValido();
 
@@ -20,15 +52,26 @@ async function melhorEnvioFetch<T>(path: string, init?: RequestInit): Promise<T>
 
   if (!resposta.ok) {
     console.error("[melhor-envio] erro na API:", resposta.status, corpo);
-    throw new Error(`Melhor Envio respondeu ${resposta.status}: ${JSON.stringify(corpo)}`);
+    throw new MelhorEnvioApiError(resposta.status, corpo);
   }
 
   return corpo as T;
 }
 
 function enderecoRemetente() {
+  const cepOrigem = (process.env.MELHOR_ENVIO_CEP_ORIGEM ?? "").replace(/\D/g, "");
+
+  if (cepOrigem.length !== 8) {
+    // Falha cedo e com mensagem clara em vez de deixar a API do Melhor
+    // Envio devolver "cep_origem está invalido" sem contexto nenhum.
+    throw new Error(
+      `MELHOR_ENVIO_CEP_ORIGEM inválido ou não configurado (valor atual: "${process.env.MELHOR_ENVIO_CEP_ORIGEM ?? ""}"). ` +
+        "Configure um CEP real de 8 dígitos nas variáveis de ambiente."
+    );
+  }
+
   return {
-    postal_code: process.env.MELHOR_ENVIO_CEP_ORIGEM!,
+    postal_code: cepOrigem,
     address: process.env.MELHOR_ENVIO_ENDERECO_REMETENTE!,
     number: process.env.MELHOR_ENVIO_NUMERO_REMETENTE!,
     district: process.env.MELHOR_ENVIO_BAIRRO_REMETENTE!,
@@ -75,6 +118,8 @@ export function dimensoesDaVariante(v: {
 }
 
 export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]): Promise<OpcaoFrete[]> {
+  const remetente = enderecoRemetente();
+
   const resultado = await melhorEnvioFetch<
     Array<{
       id: number;
@@ -89,7 +134,7 @@ export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]):
   >("/me/shipment/calculate", {
     method: "POST",
     body: JSON.stringify({
-      from: { postal_code: process.env.MELHOR_ENVIO_CEP_ORIGEM },
+      from: { postal_code: remetente.postal_code },
       to: { postal_code: cepDestino },
       products: itens.map((item, indice) => ({
         id: String(indice),

@@ -40,6 +40,9 @@ export default function CheckoutPage() {
   const [calculandoFrete, setCalculandoFrete] = useState(false);
   const [erroFrete, setErroFrete] = useState<string | null>(null);
 
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [cepEncontrado, setCepEncontrado] = useState<string | null>(null);
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [installments, setInstallments] = useState(1);
 
@@ -66,6 +69,35 @@ export default function CheckoutPage() {
         </Link>
       </div>
     );
+  }
+
+  async function buscarEnderecoPorCep(valorCep: string) {
+    const cepLimpo = valorCep.replace(/\D/g, "");
+    setCepEncontrado(null);
+
+    if (cepLimpo.length !== 8) return;
+
+    setBuscandoCep(true);
+    try {
+      const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const dados = await resposta.json();
+
+      if (dados.erro) {
+        setErroFrete("CEP não encontrado. Confira se digitou certo — ele deve ter 8 números.");
+        return;
+      }
+
+      setStreet(dados.logradouro || "");
+      setCity(dados.localidade || "");
+      setStateUf(dados.uf || "");
+      setCepEncontrado(`${dados.logradouro ? dados.logradouro + ", " : ""}${dados.bairro ? dados.bairro + " — " : ""}${dados.localidade}/${dados.uf}`);
+      setErroFrete(null);
+    } catch {
+      // ViaCEP indisponível não deve travar o checkout — o cliente ainda
+      // pode preencher o endereço manualmente.
+    } finally {
+      setBuscandoCep(false);
+    }
   }
 
   async function calcularFrete() {
@@ -222,10 +254,17 @@ export default function CheckoutPage() {
                       <>
                         <input
                           value={cep}
-                          onChange={(e) => setCep(e.target.value)}
+                          onChange={(e) => {
+                            setCep(e.target.value);
+                            buscarEnderecoPorCep(e.target.value);
+                          }}
                           placeholder="CEP"
                           className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand max-w-[200px]"
                         />
+                        {buscandoCep && <p className="text-xs text-muted">Buscando endereço…</p>}
+                        {cepEncontrado && (
+                          <p className="text-xs text-success">✓ {cepEncontrado} — confira e complete o número</p>
+                        )}
                         <input
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
