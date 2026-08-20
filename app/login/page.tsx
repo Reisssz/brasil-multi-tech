@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { entrar, type EstadoLogin } from "./actions";
 
 const estadoInicial: EstadoLogin = null;
 
-export default function PaginaLogin() {
+function FormularioLogin() {
   const [estado, formAction, pending] = useActionState(entrar, estadoInicial);
   const searchParams = useSearchParams();
   const redirectPara = searchParams.get("redirect") ?? "/conta";
@@ -68,5 +68,13 @@ export default function PaginaLogin() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function PaginaLogin() {
+  return (
+    <Suspense>
+      <FormularioLogin />
+    </Suspense>
   );
 }
