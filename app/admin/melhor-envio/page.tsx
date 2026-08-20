@@ -1,63 +1,47 @@
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import crypto from "node:crypto";
-import { cookies } from "next/headers";
-import { urlDeAutorizacao } from "@/lib/melhor-envio/oauth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
 
-export default async function ConectarMelhorEnvio({
-  searchParams,
-}: {
-  searchParams: Promise<{ sucesso?: string; erro?: string }>;
-}) {
-  const { sucesso, erro } = await searchParams;
+export default async function AdminHome() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const supabase = createAdminClient();
-  const { data: tokenAtual } = await supabase
-    .from("melhor_envio_tokens")
-    .select("expires_at")
-    .eq("id", true)
-    .maybeSingle();
+  if (!user) redirect("/login?redirect=/admin");
 
-  async function iniciarConexao() {
-    "use server";
-    const state = crypto.randomUUID();
-    (await cookies()).set("melhor_envio_oauth_state", state, { httpOnly: true, maxAge: 600, path: "/" });
-    redirect(urlDeAutorizacao(state));
-  }
+  const { data: perfil } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (perfil?.role !== "admin") redirect("/");
+
+  const [{ count: pedidosPendentes }, { count: pedidosPagos }] = await Promise.all([
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "paid"),
+  ]);
 
   return (
-    <div className="mx-auto max-w-md px-4 sm:px-6 py-12">
-      <h1 className="font-display text-2xl font-bold text-foreground mb-6">Melhor Envio</h1>
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
+      <h1 className="font-display text-2xl font-bold text-foreground mb-6">Painel administrativo</h1>
 
-      {sucesso && (
-        <p className="mb-4 rounded-lg bg-success-light px-3 py-2 text-sm text-success">
-          Conectado com sucesso!
-        </p>
-      )}
-      {erro && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">Não foi possível conectar: {erro}</p>}
-
-      {tokenAtual ? (
-        <div className="mb-6 rounded-2xl border border-border bg-surface p-4">
-          <p className="text-sm text-muted">Status</p>
-          <p className="font-semibold text-success">Conectado</p>
-          <p className="text-xs text-muted">
-            Token válido até {new Date(tokenAtual.expires_at).toLocaleString("pt-BR")}
-          </p>
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <p className="text-sm text-muted">Pedidos pendentes</p>
+          <p className="text-3xl font-bold text-foreground">{pedidosPendentes ?? 0}</p>
         </div>
-      ) : (
-        <p className="mb-6 text-sm text-muted">
-          Conecte sua conta Melhor Envio para habilitar cálculo de frete, compra de etiqueta e rastreio.
-        </p>
-      )}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <p className="text-sm text-muted">Pedidos pagos</p>
+          <p className="text-3xl font-bold text-foreground">{pedidosPagos ?? 0}</p>
+        </div>
+      </div>
 
-      <form action={iniciarConexao}>
-        <button
-          type="submit"
-          className="w-full inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark text-brand-foreground font-semibold text-sm transition-colors"
+      <div className="flex flex-col gap-2">
+        <Link
+          href="/admin/melhor-envio"
+          className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-foreground hover:border-brand"
         >
-          {tokenAtual ? "Reconectar" : "Conectar Melhor Envio"}
-        </button>
-      </form>
+          Conectar / gerenciar Melhor Envio
+          <span className="text-muted">→</span>
+        </Link>
+      </div>
     </div>
   );
 }
