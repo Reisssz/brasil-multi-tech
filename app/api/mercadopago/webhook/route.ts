@@ -1,0 +1,105 @@
+import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
+import { mpPayment } from "@/lib/mercadopago/client";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * Confirma pagamentos de verdade. O Mercado Pago chama esta URL sempre que
+ * um pagamento muda de status — NUNCA confie no redirect do navegador
+ * (back_urls) para liberar o pedido, só este webhook com assinatura
+ * validada e o status lido direto da API do Mercado Pago.
+ */
+export async function POST(request: NextRequest) {
+  const dataId =
+    request.nextUrl.searchParams.get("data.id") ??
+    (await request.clone().json().catch(() => null))?.data?.id;
+
+  const xSignature = request.headers.get("x-signature") ?? "";
+  const xRequestId = request.headers.get("x-request-id") ?? "";
+
+  if (!dataId) {
+    return NextResponse.json({ error: "data.id ausente" }, { status: 400 });
+  }
+
+  if (!validarAssinatura(xSignature, xRequestId, dataId)) {
+    console.error("[mercadopago:webhook] assinatura inválida");
+    return NextResponse.json({ error: "assinatura inválida" }, { status: 401 });
+  }
+
+  const pagamento = await mpPayment.get({ id: dataId });
+
+  const orderId = pagamento.external_reference;
+  if (!orderId) {
+    return NextResponse.json({ received: true });
+  }
+
+  const supabase = createAdminClient();
+
+  await supabase.from("payments").upsert(
+    {
+      order_id: orderId,
+      mp_payment_id: String(pagamento.id),
+      mp_status: pagamento.status ?? null,
+      mp_status_detail: pagamento.status_detail ?? null,
+      metodo: pagamento.payment_type_id ?? null,
+      valor: pagamento.transaction_amount ?? 0,
+      raw_payload: pagamento as unknown as Record<string, unknown>,
+    },
+    { onConflict: "mp_payment_id" }
+  );
+
+  const statusPedido = mapearStatusPedido(pagamento.status);
+  if (statusPedido) {
+    await supabase.from("orders").update({ status: statusPedido }).eq("id", orderId);
+
+    if (statusPedido === "paid") {
+      const { data: pedido } = await supabase.from("orders").select("user_id").eq("id", orderId).single();
+      await supabase.from("activity_logs").insert({
+        user_id: pedido?.user_id ?? null,
+        event_type: "order_paid",
+        metadata: { pedidoId: orderId, valor: pagamento.transaction_amount },
+      });
+    }
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+function mapearStatusPedido(statusMp: string | undefined): "paid" | "cancelled" | "refunded" | null {
+  switch (statusMp) {
+    case "approved":
+      return "paid";
+    case "rejected":
+    case "cancelled":
+      return "cancelled";
+    case "refunded":
+    case "charged_back":
+      return "refunded";
+    default:
+      return null;
+  }
+}
+
+function validarAssinatura(xSignature: string, xRequestId: string, dataId: string): boolean {
+  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn("[mercadopago:webhook] MERCADOPAGO_WEBHOOK_SECRET não configurado — pulando validação.");
+    return true;
+  }
+
+  const partes = Object.fromEntries(
+    xSignature.split(",").map((parte) => {
+      const [chave, valor] = parte.split("=");
+      return [chave?.trim(), valor?.trim()];
+    })
+  );
+
+  const ts = partes.ts;
+  const hashRecebido = partes.v1;
+  if (!ts || !hashRecebido) return false;
+
+  const manifest = `id:${dataId.toLowerCase()};request-id:${xRequestId};ts:${ts};`;
+  const hashCalculado = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+
+  return crypto.timingSafeEqual(Buffer.from(hashCalculado), Buffer.from(hashRecebido));
+}
