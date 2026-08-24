@@ -42,6 +42,7 @@ export default function CheckoutPage() {
   const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(null);
   const [calculandoFrete, setCalculandoFrete] = useState(false);
   const [erroFrete, setErroFrete] = useState<string | null>(null);
+  const [freteGratisAplicado, setFreteGratisAplicado] = useState(false);
 
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [cepEncontrado, setCepEncontrado] = useState<string | null>(null);
@@ -112,6 +113,7 @@ export default function CheckoutPage() {
     setCalculandoFrete(true);
     setOpcoesFrete([]);
     setFreteSelecionado(null);
+    setFreteGratisAplicado(false);
 
     try {
       const resposta = await fetch("/api/frete", {
@@ -127,6 +129,10 @@ export default function CheckoutPage() {
       }
 
       setOpcoesFrete(dados.opcoes);
+      setFreteGratisAplicado(Boolean(dados.freteGratis));
+      if (dados.freteGratis && dados.opcoes?.[0]) {
+        setFreteSelecionado(dados.opcoes[0]);
+      }
     } catch {
       setErroFrete("Não foi possível calcular o frete agora. Tente novamente.");
     } finally {
@@ -318,6 +324,12 @@ export default function CheckoutPage() {
 
                         {erroFrete && <p className="text-sm text-red-600">{erroFrete}</p>}
 
+                        {freteGratisAplicado && (
+                          <p className="rounded-lg bg-success-light px-3 py-2 text-sm font-medium text-success">
+                            🎉 Frete grátis aplicado nesse pedido!
+                          </p>
+                        )}
+
                         {opcoesFrete.length > 0 && (
                           <div className="flex flex-col gap-2">
                             {opcoesFrete.map((opcao) => (
@@ -342,8 +354,8 @@ export default function CheckoutPage() {
                                     <span className="text-xs text-muted">{opcao.prazoDias} dias úteis</span>
                                   </span>
                                 </span>
-                                <span className="text-sm font-semibold text-foreground">
-                                  {formatBRL(opcao.precoComDescontoCents)}
+                                <span className={`text-sm font-semibold ${opcao.precoComDescontoCents === 0 ? "text-success" : "text-foreground"}`}>
+                                  {opcao.precoComDescontoCents === 0 ? "Grátis" : formatBRL(opcao.precoComDescontoCents)}
                                 </span>
                               </label>
                             ))}
@@ -450,7 +462,9 @@ export default function CheckoutPage() {
           {freteSelecionado && (
             <div className="flex justify-between text-sm text-muted">
               <span>Frete — {freteSelecionado.nome}</span>
-              <span className="tabular-nums">{formatBRL(freteSelecionado.precoComDescontoCents)}</span>
+              <span className={`tabular-nums ${freteSelecionado.precoComDescontoCents === 0 ? "text-success font-medium" : ""}`}>
+                {freteSelecionado.precoComDescontoCents === 0 ? "Grátis" : formatBRL(freteSelecionado.precoComDescontoCents)}
+              </span>
             </div>
           )}
           <div className="h-px bg-border" />

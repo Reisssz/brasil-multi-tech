@@ -23,12 +23,27 @@ export async function POST(request: NextRequest) {
 
   const { data: variantes, error: erroVariantes } = await supabase
     .from("product_variants")
-    .select("id, price_cents, weight_grams, width_cm, height_cm, length_cm, products ( name )")
+    .select("id, price_cents, weight_grams, width_cm, height_cm, length_cm, products ( name, free_shipping )")
     .in("id", variantIds);
 
   if (erroVariantes) {
     console.error("[frete] falha ao buscar variantes:", erroVariantes.message);
     return NextResponse.json({ error: "Não foi possível calcular o frete agora." }, { status: 502 });
+  }
+
+  type VarianteComProduto = {
+    id: string;
+    price_cents: number;
+    weight_grams: number | null;
+    width_cm: number | null;
+    height_cm: number | null;
+    length_cm: number | null;
+    products: { name: string; free_shipping: boolean } | { name: string; free_shipping: boolean }[] | null;
+  };
+
+  function produtoDaVariante(v: VarianteComProduto | undefined) {
+    if (!v) return undefined;
+    return Array.isArray(v.products) ? v.products[0] : (v.products ?? undefined);
   }
 
   const itens = body.items.map((item) => {
@@ -40,11 +55,18 @@ export async function POST(request: NextRequest) {
       lengthCm: variante?.length_cm,
     });
     return {
-      nome: (Array.isArray(variante?.products) ? variante.products[0]?.name : (variante?.products as { name: string } | undefined)?.name) ?? "Produto",
+      nome: produtoDaVariante(variante)?.name ?? "Produto",
       quantidade: item.quantity,
       valorUnitarioCents: variante?.price_cents ?? 0,
       ...dimensoes,
     };
+  });
+
+  // Frete grátis só se TODOS os itens do carrinho tiverem free_shipping — um
+  // pacote com item pago dentro continua cobrando o frete do pacote inteiro.
+  const todosComFreteGratis = body.items.every((item) => {
+    const variante = variantes?.find((v) => v.id === item.variantId);
+    return produtoDaVariante(variante)?.free_shipping === true;
   });
 
   try {
@@ -55,6 +77,15 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    if (todosComFreteGratis) {
+      // Mantém o prazo real cotado, mas zera o valor cobrado do cliente —
+      // ainda cotamos de verdade para saber prazo de entrega e permitir a
+      // compra da etiqueta depois (a loja paga o frete, o cliente não vê cobrança).
+      const opcoesGratis = opcoes.map((o) => ({ ...o, precoComDescontoCents: 0 }));
+      return NextResponse.json({ opcoes: opcoesGratis, freteGratis: true });
+    }
+
     return NextResponse.json({ opcoes });
   } catch (erro) {
     if (erro instanceof MelhorEnvioApiError) {
