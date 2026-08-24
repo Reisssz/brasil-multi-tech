@@ -13,11 +13,31 @@ import { ProductCard } from "./ProductCard";
 import { useCart } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo, sortByCondition } from "@/lib/conditions";
+import { ShippingEstimator } from "./ShippingEstimator";
 
-export function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
-  const [selectedColor, setSelectedColor] = useState(product.variants[0].color);
-  const [selectedStorage, setSelectedStorage] = useState<number | undefined>(product.variants[0].storageGb);
-  const [selectedCondition, setSelectedCondition] = useState(product.variants[0].condition);
+export function ProductDetail({
+  product,
+  related,
+  comboSlot,
+  initialVariantId,
+}: {
+  product: Product;
+  related: Product[];
+  comboSlot?: React.ReactNode;
+  initialVariantId?: string;
+}) {
+  // Se o cliente veio de um card que anunciava um preço específico (ex: o
+  // preço "a partir de" mostrado é sempre o da variante mais barata —
+  // normalmente outlet), a página de produto tem que abrir já mostrando
+  // ESSA variante selecionada. Sem isso, ela caía sempre em variants[0],
+  // que normalmente é "excelente" — mais caro que o preço anunciado no
+  // card, confundindo o cliente.
+  const varianteInicial =
+    (initialVariantId && product.variants.find((v) => v.id === initialVariantId)) || product.variants[0];
+
+  const [selectedColor, setSelectedColor] = useState(varianteInicial.color);
+  const [selectedStorage, setSelectedStorage] = useState<number | undefined>(varianteInicial.storageGb);
+  const [selectedCondition, setSelectedCondition] = useState(varianteInicial.condition);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const { addItem } = useCart();
@@ -183,6 +203,8 @@ export function ProductDetail({ product, related }: { product: Product; related:
               : "Fora de estoque"}
           </span>
 
+          <ShippingEstimator items={[{ productId: product.id, variantId: activeVariant.id, quantity }]} />
+
           <div className="flex items-center gap-3">
             <div className="flex items-center border border-border rounded-lg h-11">
               <button
@@ -236,6 +258,8 @@ export function ProductDetail({ product, related }: { product: Product; related:
           </div>
         </div>
       </div>
+
+      {comboSlot}
 
       <div className="grid lg:grid-cols-2 gap-10 mt-12">
         <div className="flex flex-col gap-3">

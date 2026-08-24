@@ -1,20 +1,36 @@
 import { getComboSuggestionsDb } from "@/lib/data/products-db";
-import { ComboSuggestionCard } from "./ComboSuggestionCard";
+import { getMainPhoto } from "@/lib/data/products";
+import { ComboKit } from "./ComboKit";
+import { Product, ProductVariant } from "@/lib/types";
 
-export async function ComboSuggestions({ productId, category }: { productId: string; category: string }) {
-  const sugestoes = await getComboSuggestionsDb([category], [productId], 3);
+export async function ComboSuggestions({
+  productId,
+  category,
+  productName,
+  variant,
+}: {
+  productId: string;
+  category: string;
+  productName: string;
+  variant: ProductVariant;
+}) {
+  const sugestoes = await getComboSuggestionsDb([category], [productId], 4);
 
   if (sugestoes.length === 0) return null;
 
+  const fotoBase = getMainPhoto(variant) ?? null;
+
   return (
-    <div className="mt-14">
-      <h2 className="text-xl font-bold text-foreground mb-1">Complete seu combo</h2>
-      <p className="text-sm text-muted mb-5">Quem leva este produto também costuma levar:</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl">
-        {sugestoes.map((s) => (
-          <ComboSuggestionCard key={s.id} sugestao={s} />
-        ))}
-      </div>
-    </div>
+    <ComboKit
+      produtoBase={{
+        id: productId,
+        variantId: variant.id,
+        name: productName,
+        priceCents: variant.priceCents,
+        photoUrl: fotoBase,
+        icone: (variant.images?.[0] as string) ?? "accessory",
+      }}
+      sugestoes={sugestoes}
+    />
   );
 }

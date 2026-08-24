@@ -25,8 +25,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ variante?: string }>;
+}) {
   const { slug } = await params;
+  const { variante: variantePreSelecionada } = await searchParams;
   const product = await getProductBySlugDb(slug);
   if (!product) notFound();
 
@@ -62,10 +69,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <ProductDetail product={product} related={related} />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <ComboSuggestions productId={product.id} category={product.category} />
-      </div>
+      <ProductDetail
+        product={product}
+        related={related}
+        initialVariantId={variantePreSelecionada}
+        comboSlot={
+          <ComboSuggestions
+            productId={product.id}
+            category={product.category}
+            productName={product.name}
+            variant={product.variants[0]}
+          />
+        }
+      />
     </>
   );
 }

@@ -34,19 +34,31 @@ export class MelhorEnvioApiError extends Error {
   }
 }
 
-async function melhorEnvioFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa = 1): Promise<T> {
   const token = await obterTokenValido();
 
-  const resposta = await fetch(`${BASE_URL}/api/v2${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": process.env.MELHOR_ENVIO_USER_AGENT!,
-      ...init?.headers,
-    },
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${BASE_URL}/api/v2${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": process.env.MELHOR_ENVIO_USER_AGENT!,
+        ...init?.headers,
+      },
+    });
+  } catch (erroRede) {
+    // Falha de conexão (não é erro da API, é a requisição nem chegar lá) —
+    // tenta mais uma vez antes de desistir, cobre soluços passageiros de
+    // rede comuns em ambiente serverless.
+    if (tentativa < 2) {
+      console.warn("[melhor-envio] falha de rede, tentando novamente:", erroRede);
+      return melhorEnvioFetch<T>(path, init, tentativa + 1);
+    }
+    throw erroRede;
+  }
 
   const corpo = await resposta.json().catch(() => null);
 
@@ -117,6 +129,12 @@ export function dimensoesDaVariante(v: {
   };
 }
 
+// IDs de serviço padrão dos Correios na Melhor Envio — pedimos os dois
+// explicitamente para garantir que PAC apareça como opção, não só SEDEX
+// (que costuma ser o único retornado quando não especificamos `services`).
+const SERVICO_PAC = 1;
+const SERVICO_SEDEX = 2;
+
 export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]): Promise<OpcaoFrete[]> {
   const remetente = enderecoRemetente();
 
@@ -145,19 +163,40 @@ export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]):
         insurance_value: item.valorUnitarioCents / 100,
         quantity: item.quantidade,
       })),
+      // Sem este campo, a API só devolve os serviços que ELA decide (às
+      // vezes só SEDEX). Pedindo os dois explicitamente, PAC também é
+      // calculado sempre que a transportadora atender o trecho.
+      services: `${SERVICO_PAC},${SERVICO_SEDEX}`,
     }),
   });
 
-  return resultado
-    .filter((servico) => !servico.error)
-    .map((servico) => ({
-      id: servico.id,
-      nome: servico.name,
-      transportadora: servico.company.name,
-      precoOriginalCents: Math.round(Number(servico.price) * 100),
-      precoComDescontoCents: Math.round(Number(servico.custom_price) * 100),
-      prazoDias: servico.custom_delivery_time ?? servico.delivery_time,
-    }));
+  const comErro = resultado.filter((servico) => servico.error);
+  if (comErro.length > 0) {
+    console.warn(
+      "[melhor-envio] serviço(s) descartado(s) por erro:",
+      comErro.map((s) => `${s.name} (id ${s.id}): ${s.error}`).join(" | ")
+    );
+  }
+
+  const validos = resultado.filter((servico) => !servico.error);
+
+  if (validos.length === 0 && resultado.length > 0) {
+    // Nenhuma opção veio sem erro — em vez do genérico "não foi possível
+    // calcular", agregamos o motivo real de cada serviço (ex: "PAC: peso
+    // excede o limite", "SEDEX: CEP não atendido"), que ajuda demais a
+    // diagnosticar sem precisar ficar catando log depois.
+    const motivos = resultado.map((s) => `${s.name}: ${s.error}`).join(" | ");
+    throw new MelhorEnvioApiError(422, { message: motivos, errors: { servicos: [motivos] } });
+  }
+
+  return validos.map((servico) => ({
+    id: servico.id,
+    nome: servico.name,
+    transportadora: servico.company.name,
+    precoOriginalCents: Math.round(Number(servico.price) * 100),
+    precoComDescontoCents: Math.round(Number(servico.custom_price) * 100),
+    prazoDias: servico.custom_delivery_time ?? servico.delivery_time,
+  }));
 }
 
 export type DadosCompraEtiqueta = {

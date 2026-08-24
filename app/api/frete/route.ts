@@ -3,6 +3,9 @@ import { calcularFrete, dimensoesDaVariante, MelhorEnvioApiError } from "@/lib/m
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CartItem } from "@/lib/types";
 
+// Mesmo id usado em lib/melhor-envio/client.ts para pedir o serviço PAC.
+const SERVICO_PAC_ID = 1;
+
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as { cep: string; items: CartItem[] } | null;
 
@@ -79,11 +82,28 @@ export async function POST(request: NextRequest) {
     }
 
     if (todosComFreteGratis) {
-      // Mantém o prazo real cotado, mas zera o valor cobrado do cliente —
-      // ainda cotamos de verdade para saber prazo de entrega e permitir a
-      // compra da etiqueta depois (a loja paga o frete, o cliente não vê cobrança).
-      const opcoesGratis = opcoes.map((o) => ({ ...o, precoComDescontoCents: 0 }));
-      return NextResponse.json({ opcoes: opcoesGratis, freteGratis: true });
+      // A política da loja é: frete grátis vale só pelo PAC (mais barato/
+      // devagar) — SEDEX e qualquer outro serviço mais rápido continuam
+      // cobrando o valor real, mesmo em produtos com frete grátis.
+      const indicePac = opcoes.findIndex((o) => o.id === SERVICO_PAC_ID || o.nome.toUpperCase().includes("PAC"));
+
+      if (indicePac === -1) {
+        // PAC não veio disponível pra esse CEP/conta — mais comum é o PAC
+        // não estar contratado na conta Melhor Envio. Não inventamos
+        // gratuidade em outro serviço; mostramos os preços reais e
+        // avisamos no log pra investigar a causa.
+        console.warn(
+          "[frete] frete grátis esperado mas PAC não veio nas opções retornadas — verifique se o PAC está habilitado na conta Melhor Envio. Opções recebidas:",
+          opcoes.map((o) => o.nome).join(", ")
+        );
+        return NextResponse.json({ opcoes, freteGratis: false });
+      }
+
+      const opcoesComPacGratis = opcoes.map((o, i) => (i === indicePac ? { ...o, precoComDescontoCents: 0 } : o));
+      // PAC (grátis) sempre primeiro na lista, pra já vir pré-selecionado.
+      const ordenadas = [opcoesComPacGratis[indicePac], ...opcoesComPacGratis.filter((_, i) => i !== indicePac)];
+
+      return NextResponse.json({ opcoes: ordenadas, freteGratis: true });
     }
 
     return NextResponse.json({ opcoes });

@@ -324,9 +324,9 @@ export default function CheckoutPage() {
 
                         {erroFrete && <p className="text-sm text-red-600">{erroFrete}</p>}
 
-                        {freteGratisAplicado && (
+                        {freteGratisAplicado && freteSelecionado?.precoComDescontoCents === 0 && (
                           <p className="rounded-lg bg-success-light px-3 py-2 text-sm font-medium text-success">
-                            🎉 Frete grátis aplicado nesse pedido!
+                            🎉 Frete grátis pelo PAC nesse pedido!
                           </p>
                         )}
 

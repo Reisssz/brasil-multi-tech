@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/pricing";
 
-type Resultado = { id: string; slug: string; name: string; brand: string; minPriceCents: number };
+type Resultado = { id: string; slug: string; name: string; brand: string; minPriceCents: number; variantId: string | null };
 
 export function SearchBar({ className = "" }: { className?: string }) {
   const [query, setQuery] = useState("");
@@ -38,15 +38,15 @@ export function SearchBar({ className = "" }: { className?: string }) {
     };
   }, [query]);
 
-  function goToProduct(slug: string) {
+  function goToProduct(slug: string, variantId?: string | null) {
     setOpen(false);
     setQuery("");
-    router.push(`/produto/${slug}`);
+    router.push(variantId ? `/produto/${slug}?variante=${variantId}` : `/produto/${slug}`);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (results[0]) goToProduct(results[0].slug);
+    if (results[0]) goToProduct(results[0].slug, results[0].variantId);
   }
 
   return (
@@ -80,7 +80,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
           {results.map((p) => (
             <button
               key={p.id}
-              onMouseDown={() => goToProduct(p.slug)}
+              onMouseDown={() => goToProduct(p.slug, p.variantId)}
               className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-[#f7f8fa] transition-colors"
             >
               <span className="flex flex-col">
