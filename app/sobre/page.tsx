@@ -1,4 +1,5 @@
-import { SITE, whatsappLink } from "@/lib/config";
+import { SITE } from "@/lib/config";
+import Link from "next/link";
 
 export const metadata = { title: "Sobre nós" };
 
@@ -46,14 +47,12 @@ export default function AboutPage() {
             <h2 className="font-bold text-foreground">Visite nossa loja física</h2>
             <p className="text-sm text-muted">{SITE.address.line1}, {SITE.address.line2}</p>
           </div>
-          <a
-            href={whatsappLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-full bg-whatsapp hover:bg-whatsapp-dark text-whatsapp-foreground font-semibold h-11 px-6 text-sm transition-colors shrink-0"
+          <Link
+            href="/contato"
+            className="inline-flex items-center justify-center rounded-full bg-brand hover:bg-brand-dark text-brand-foreground font-semibold h-11 px-6 text-sm transition-colors shrink-0"
           >
-            Falar no WhatsApp
-          </a>
+            Falar com a gente
+          </Link>
         </div>
       </div>
     </div>

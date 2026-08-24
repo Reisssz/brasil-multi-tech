@@ -12,7 +12,6 @@ import { ProductInstallments } from "./ProductInstallments";
 import { ProductCard } from "./ProductCard";
 import { useCart } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
-import { whatsappLink } from "@/lib/config";
 import { CONDITION_LABELS, isSeminovo, sortByCondition } from "@/lib/conditions";
 
 export function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
@@ -219,18 +218,6 @@ export function ProductDetail({ product, related }: { product: Product; related:
           >
             {added ? "Adicionado ao carrinho ✓" : "Adicionar ao carrinho"}
           </button>
-
-          <a
-            href={whatsappLink(`Olá! Tenho interesse no ${product.brand} ${product.name}. Pode me ajudar?`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg border-2 border-whatsapp text-whatsapp hover:bg-whatsapp hover:text-whatsapp-foreground font-semibold h-11 text-sm transition-colors"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.6 1.5 5.2L2 22l4.9-1.5A9.9 9.9 0 0 0 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2Zm5.6 14.1c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-5-4.3-5.1-4.5-.2-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.8.3.1.4.2.5.3.1.2.1.9-.1 1.4Z" />
-            </svg>
-            Tirar dúvida no WhatsApp
-          </a>
 
           <ProductInstallments priceCents={activeVariant.priceCents} />
 

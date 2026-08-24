@@ -22,7 +22,7 @@ const sections = [
   {
     title: "Como acionar a garantia",
     body:
-      "Entre em contato pelo WhatsApp ou pelo e-mail de atendimento informando o número do pedido e o defeito identificado. Nossa equipe vai orientar sobre o envio do aparelho para análise técnica, sem custo para você.",
+      "Entre em contato pelos nossos canais de atendimento informando o número do pedido e o defeito identificado. Nossa equipe vai orientar sobre o envio do aparelho para análise técnica, sem custo para você.",
   },
 ];
 

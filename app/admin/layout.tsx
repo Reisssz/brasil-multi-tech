@@ -25,6 +25,7 @@ export default async function LayoutAdmin({ children }: { children: React.ReactN
           <Link href="/admin/produtos" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Produtos</Link>
           <Link href="/admin/categorias" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Categorias</Link>
           <Link href="/admin/pedidos" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Pedidos</Link>
+          <Link href="/admin/vender" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Venda de aparelhos</Link>
           <Link href="/admin/melhor-envio" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Melhor Envio</Link>
           <Link href="/" className="mt-4 rounded-lg px-3 py-2 text-muted hover:bg-[#f7f8fa]">← Voltar à loja</Link>
         </nav>

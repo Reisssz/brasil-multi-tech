@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { whatsappLink } from "@/lib/config";
 import { Reveal } from "../ui/Reveal";
 
 const steps = [
@@ -19,8 +18,8 @@ const steps = [
   },
   {
     n: "2",
-    title: "Fale no WhatsApp ou compre online",
-    text: "Tire dúvidas e feche com um consultor, ou finalize sozinho pelo carrinho — você escolhe.",
+    title: "Compre online com segurança",
+    text: "Finalize sozinho pelo carrinho, com Pix, boleto ou cartão parcelado — processado pelo Mercado Pago.",
     icon: (
       <path
         d="M4 4h16v12H8l-4 4V4Z"
@@ -71,24 +70,13 @@ export function HowItWorks() {
         ))}
       </div>
 
-      <Reveal delay={200} className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <Reveal delay={200} className="mt-8 flex items-center justify-center">
         <Link
           href="/categoria/ofertas"
           className="inline-flex items-center justify-center gap-2 rounded-full bg-brand hover:bg-brand-dark text-brand-foreground font-bold text-sm h-12 px-7 w-full sm:w-auto transition-colors active:scale-95"
         >
           Ver produtos
         </Link>
-        <a
-          href={whatsappLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp hover:bg-whatsapp-dark text-whatsapp-foreground font-bold text-sm h-12 px-7 w-full sm:w-auto transition-colors active:scale-95"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.6 1.5 5.2L2 22l4.9-1.5A9.9 9.9 0 0 0 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2Zm5.6 14.1c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-5-4.3-5.1-4.5-.2-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.8.3.1.4.2.5.3.1.2.1.9-.1 1.4Z" />
-          </svg>
-          Falar no WhatsApp
-        </a>
       </Reveal>
     </section>
   );

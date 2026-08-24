@@ -6,7 +6,6 @@ import { Logo } from "../ui/Logo";
 import { SearchBar } from "./SearchBar";
 import { useCart } from "@/lib/cart-context";
 import { ProductCategory } from "@/lib/types";
-import { whatsappLink } from "@/lib/config";
 
 function Chevron() {
   return (
@@ -57,21 +56,9 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
           </div>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <a
-              href={whatsappLink()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden lg:inline-flex items-center gap-2 rounded-full bg-whatsapp hover:bg-whatsapp-dark text-whatsapp-foreground px-5 h-11 text-sm font-bold transition-colors shadow-[0_2px_8px_rgba(37,211,102,0.4)]"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.6 1.5 5.2L2 22l4.9-1.5A9.9 9.9 0 0 0 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2Zm5.6 14.1c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-5-4.3-5.1-4.5-.2-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.8.3.1.4.2.5.3.1.2.1.9-.1 1.4Z" />
-              </svg>
-              Fale com um consultor
-            </a>
-
             <Link
               href="/conta"
-              className="hidden sm:inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
+              className="inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
               aria-label="Minha conta"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
@@ -164,6 +151,12 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
           <Link href="/mais-vendidos" className="shrink-0 whitespace-nowrap text-ink-muted hover:text-brand font-medium transition-colors">
             Mais vendidos
           </Link>
+          <Link
+            href="/vender"
+            className="shrink-0 whitespace-nowrap rounded-full border border-brand/50 text-brand px-3 py-1 -my-1 font-semibold hover:bg-brand hover:text-brand-foreground transition-colors"
+          >
+            Venda seu aparelho
+          </Link>
           <Link href="/sobre" className="shrink-0 whitespace-nowrap text-ink-muted hover:text-brand font-medium transition-colors">
             Sobre nós
           </Link>
@@ -204,6 +197,13 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
                 Mais vendidos
               </Link>
               <Link
+                href="/vender"
+                onClick={() => setMobileOpen(false)}
+                className="py-2 text-sm font-semibold text-brand-dark border-b border-border/60"
+              >
+                Venda seu aparelho
+              </Link>
+              <Link
                 href="/sobre"
                 onClick={() => setMobileOpen(false)}
                 className="py-2 text-sm font-medium text-foreground border-b border-border/60"
@@ -218,17 +218,17 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
                 Contato
               </Link>
             </div>
-            <a
-              href={whatsappLink()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-whatsapp text-whatsapp-foreground h-11 text-sm font-semibold active:scale-95 transition-transform"
+            <Link
+              href="/conta"
+              onClick={() => setMobileOpen(false)}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand hover:bg-brand-dark text-brand-foreground h-11 text-sm font-semibold active:scale-95 transition-transform"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.6 1.5 5.2L2 22l4.9-1.5A9.9 9.9 0 0 0 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2Zm5.6 14.1c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-5-4.3-5.1-4.5-.2-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.4.7-.4h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.5.3.1.5.1.7-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.8.8.3.1.4.2.5.3.1.2.1.9-.1 1.4Z" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" />
               </svg>
-              Fale com um consultor
-            </a>
+              Minha conta
+            </Link>
           </div>
         </div>
       </div>

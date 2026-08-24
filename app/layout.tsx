@@ -4,7 +4,6 @@ import "./globals.css";
 import { TopBar } from "@/components/layout/TopBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { NewsletterPopup } from "@/components/layout/NewsletterPopup";
 import { CartProvider } from "@/lib/cart-context";
 import { SITE } from "@/lib/config";
@@ -69,7 +68,6 @@ export default async function RootLayout({
           <Header categories={categories} />
           <main className="flex-1 flex flex-col">{children}</main>
           <Footer categories={categories} />
-          <WhatsAppFloat />
           <NewsletterPopup />
         </CartProvider>
       </body>

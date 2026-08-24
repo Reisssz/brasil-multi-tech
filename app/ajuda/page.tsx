@@ -1,6 +1,6 @@
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { PRICING_RULES } from "@/lib/pricing";
-import { whatsappLink } from "@/lib/config";
+import Link from "next/link";
 
 const faqs = [
   {
@@ -42,16 +42,14 @@ export default function HelpPage() {
       <div className="mt-10 rounded-2xl bg-brand-light p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="font-bold text-foreground">Ainda tem dúvidas?</h2>
-          <p className="text-sm text-muted">Fale agora com um consultor pelo WhatsApp.</p>
+          <p className="text-sm text-muted">Fale com a gente pelos nossos canais de atendimento.</p>
         </div>
-        <a
-          href={whatsappLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center rounded-full bg-whatsapp hover:bg-whatsapp-dark text-whatsapp-foreground font-semibold h-11 px-6 text-sm transition-colors shrink-0"
+        <Link
+          href="/contato"
+          className="inline-flex items-center justify-center rounded-full bg-brand hover:bg-brand-dark text-brand-foreground font-semibold h-11 px-6 text-sm transition-colors shrink-0"
         >
-          Falar no WhatsApp
-        </a>
+          Ver contato
+        </Link>
       </div>
     </div>
   );
