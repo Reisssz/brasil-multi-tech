@@ -3,8 +3,9 @@ import { calcularFrete, dimensoesDaVariante, MelhorEnvioApiError } from "@/lib/m
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CartItem } from "@/lib/types";
 
-// Mesmo id usado em lib/melhor-envio/client.ts para pedir o serviço PAC.
-const SERVICO_PAC_ID = 1;
+// Mesmo id usado em lib/melhor-envio/client.ts para pedir o serviço SEDEX.
+const SERVICO_GRATIS_ID = 2;
+const SERVICO_GRATIS_NOME = "SEDEX";
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as { cep: string; items: CartItem[] } | null;
@@ -82,26 +83,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (todosComFreteGratis) {
-      // A política da loja é: frete grátis vale só pelo PAC (mais barato/
-      // devagar) — SEDEX e qualquer outro serviço mais rápido continuam
-      // cobrando o valor real, mesmo em produtos com frete grátis.
-      const indicePac = opcoes.findIndex((o) => o.id === SERVICO_PAC_ID || o.nome.toUpperCase().includes("PAC"));
+      // A política da loja é: frete grátis vale só pelo SEDEX — qualquer
+      // outro serviço (incluindo PAC) continua cobrando o valor real,
+      // mesmo em produtos com frete grátis.
+      const indiceGratis = opcoes.findIndex(
+        (o) => o.id === SERVICO_GRATIS_ID || o.nome.toUpperCase().includes(SERVICO_GRATIS_NOME)
+      );
 
-      if (indicePac === -1) {
-        // PAC não veio disponível pra esse CEP/conta — mais comum é o PAC
-        // não estar contratado na conta Melhor Envio. Não inventamos
+      if (indiceGratis === -1) {
+        // SEDEX não veio disponível pra esse CEP/conta. Não inventamos
         // gratuidade em outro serviço; mostramos os preços reais e
         // avisamos no log pra investigar a causa.
         console.warn(
-          "[frete] frete grátis esperado mas PAC não veio nas opções retornadas — verifique se o PAC está habilitado na conta Melhor Envio. Opções recebidas:",
+          `[frete] frete grátis esperado mas ${SERVICO_GRATIS_NOME} não veio nas opções retornadas. Opções recebidas:`,
           opcoes.map((o) => o.nome).join(", ")
         );
         return NextResponse.json({ opcoes, freteGratis: false });
       }
 
-      const opcoesComPacGratis = opcoes.map((o, i) => (i === indicePac ? { ...o, precoComDescontoCents: 0 } : o));
-      // PAC (grátis) sempre primeiro na lista, pra já vir pré-selecionado.
-      const ordenadas = [opcoesComPacGratis[indicePac], ...opcoesComPacGratis.filter((_, i) => i !== indicePac)];
+      const opcoesComGratis = opcoes.map((o, i) => (i === indiceGratis ? { ...o, precoComDescontoCents: 0 } : o));
+      // Opção grátis sempre primeiro na lista, pra já vir pré-selecionada.
+      const ordenadas = [opcoesComGratis[indiceGratis], ...opcoesComGratis.filter((_, i) => i !== indiceGratis)];
 
       return NextResponse.json({ opcoes: ordenadas, freteGratis: true });
     }
