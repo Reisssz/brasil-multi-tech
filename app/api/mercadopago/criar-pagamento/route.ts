@@ -32,8 +32,19 @@ type VarianteBanco = {
  * que o navegador manda. Se alguém adulterar a requisição pra tentar pagar
  * menos, o valor cobrado continua sendo o real, lido aqui.
  */
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function resolverItens(supabase: ReturnType<typeof createAdminClient>, items: CartItem[]) {
   const variantIds = items.map((i) => i.variantId);
+
+  const idsInvalidos = variantIds.filter((id) => !REGEX_UUID.test(id));
+  if (idsInvalidos.length > 0) {
+    // Item de carrinho salvo no navegador de antes da migração do catálogo
+    // pro banco — sem essa checagem a query quebra com erro de SQL cru.
+    console.warn("[mercadopago:criar-pagamento] itens com id inválido (carrinho desatualizado):", idsInvalidos);
+    return "carrinho_desatualizado" as const;
+  }
+
   const { data, error } = await supabase
     .from("product_variants")
     .select("id, color, storage_gb, price_cents, stock, photos, product_id, products ( name )")
@@ -70,6 +81,13 @@ export async function POST(request: NextRequest) {
 
   const adminClient = createAdminClient();
   const variantes = await resolverItens(adminClient, body.items);
+
+  if (variantes === "carrinho_desatualizado") {
+    return NextResponse.json(
+      { error: "Seu carrinho tem um item desatualizado. Remova-o e adicione o produto novamente." },
+      { status: 409 }
+    );
+  }
 
   if (!variantes) {
     return NextResponse.json({ error: "Não foi possível verificar os produtos do carrinho." }, { status: 502 });
@@ -203,8 +221,15 @@ export async function POST(request: NextRequest) {
   await adminClient.from("orders").update({ mp_preference_id: preferencia.id }).eq("id", pedido.id);
 
 
-  const initPoint =
-    process.env.NODE_ENV === "production" ? preferencia.init_point : preferencia.sandbox_init_point;
+  // NUNCA decida sandbox vs produção por NODE_ENV — em ambiente serverless
+  // (Netlify Functions) essa variável nem sempre vem "production" em
+  // runtime, mesmo estando de fato em produção. O que importa de verdade é
+  // qual credencial está sendo usada: com token de produção (APP_USR-...),
+  // o link tem que ser o de produção; com token de teste (TEST-...), o de
+  // sandbox. Usar o link errado é exatamente o que deixa o botão de pagar
+  // sem habilitar na tela do Mercado Pago.
+  const usandoCredencialDeTeste = process.env.MERCADOPAGO_ACCESS_TOKEN?.startsWith("TEST-");
+  const initPoint = usandoCredencialDeTeste ? preferencia.sandbox_init_point : preferencia.init_point;
 
   return NextResponse.json({
     orderId: pedido.id,

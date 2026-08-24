@@ -34,10 +34,17 @@ async function carregarCatalogo() {
   }
 }
 
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function readFromStorage(): CartItem[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : EMPTY_ITEMS;
+    const itens: CartItem[] = raw ? JSON.parse(raw) : EMPTY_ITEMS;
+    // Limpa silenciosamente itens salvos de antes da migração do catálogo
+    // pro banco (ids antigos tipo "v-iphone13-..." em vez de UUID) — sem
+    // isso o cliente vê erro ao calcular frete/finalizar compra sem
+    // entender por quê, já que o item nem existe mais de verdade.
+    return itens.filter((item) => REGEX_UUID.test(item.variantId));
   } catch {
     return EMPTY_ITEMS;
   }
@@ -64,6 +71,7 @@ function getSnapshot(): CartItem[] {
   if (!hydratedFromStorage) {
     cartItems = readFromStorage();
     hydratedFromStorage = true;
+    persist();
   }
   return cartItems;
 }
@@ -161,4 +169,3 @@ export function resolveCartLine(item: CartItem) {
   const variant = product?.variants.find((v) => v.id === item.variantId);
   return { product, variant };
 }
-

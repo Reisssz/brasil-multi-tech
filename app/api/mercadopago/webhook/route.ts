@@ -11,19 +11,33 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 export async function POST(request: NextRequest) {
   const bodyTexto = await request.text();
-  let bodyJson: { data?: { id?: string }; id?: string } | null = null;
+  let bodyJson: { data?: { id?: string }; id?: string; resource?: string; topic?: string } | null = null;
   try {
     bodyJson = bodyTexto ? JSON.parse(bodyTexto) : null;
   } catch {
     bodyJson = null;
   }
 
-  // O Mercado Pago manda o id do pagamento de duas formas possíveis: como
-  // query string (?data.id=...) nas notificações reais, ou só no corpo
-  // (data.id, e em alguns formatos direto em "id") — como no botão
-  // "Simular notificação" do painel deles.
+  // O Mercado Pago manda o id do pagamento de formas diferentes dependendo
+  // de qual "evento" foi marcado na configuração do webhook:
+  // - formato novo (data.id): { data: { id: "..." } } ou ?data.id=... na URL
+  // - formato legado (o que "Pagamentos (legacy)" realmente envia):
+  //   { topic: "payment", resource: "<id ou URL do pagamento>" }
+  //   o "resource" às vezes vem como só o número, às vezes como URL
+  //   completa (.../v1/payments/123) — pegamos sempre o último segmento
+  //   numérico, cobre os dois casos.
+  function extrairIdDoResource(resource: string | undefined): string | null {
+    if (!resource) return null;
+    const numeros = resource.match(/\d+/g);
+    return numeros ? numeros[numeros.length - 1] : null;
+  }
+
   const dataId =
-    request.nextUrl.searchParams.get("data.id") ?? bodyJson?.data?.id ?? bodyJson?.id ?? null;
+    request.nextUrl.searchParams.get("data.id") ??
+    bodyJson?.data?.id ??
+    bodyJson?.id ??
+    (bodyJson?.topic === "payment" ? extrairIdDoResource(bodyJson.resource) : null) ??
+    null;
 
   const xSignature = request.headers.get("x-signature") ?? "";
   const xRequestId = request.headers.get("x-request-id") ?? "";

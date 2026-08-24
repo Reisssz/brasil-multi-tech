@@ -23,7 +23,21 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const variantIds = body.items.map((i) => i.variantId);
+  const idsInvalidos = variantIds.filter((id) => !REGEX_UUID.test(id));
+
+  if (idsInvalidos.length > 0) {
+    // Item de carrinho salvo no navegador de antes da migração do catálogo
+    // pro banco (ids antigos tipo "v-iphone13-..." em vez de UUID) — sem
+    // essa checagem, a consulta ao banco quebra com um erro de SQL cru.
+    console.warn("[frete] itens de carrinho com id inválido (provável carrinho desatualizado):", idsInvalidos);
+    return NextResponse.json(
+      { error: "Seu carrinho tem um item desatualizado. Remova-o e adicione o produto novamente." },
+      { status: 409 }
+    );
+  }
 
   const { data: variantes, error: erroVariantes } = await supabase
     .from("product_variants")
