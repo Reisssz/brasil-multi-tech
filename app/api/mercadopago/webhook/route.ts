@@ -10,14 +10,26 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * validada e o status lido direto da API do Mercado Pago.
  */
 export async function POST(request: NextRequest) {
+  const bodyTexto = await request.text();
+  let bodyJson: { data?: { id?: string }; id?: string } | null = null;
+  try {
+    bodyJson = bodyTexto ? JSON.parse(bodyTexto) : null;
+  } catch {
+    bodyJson = null;
+  }
+
+  // O Mercado Pago manda o id do pagamento de duas formas possíveis: como
+  // query string (?data.id=...) nas notificações reais, ou só no corpo
+  // (data.id, e em alguns formatos direto em "id") — como no botão
+  // "Simular notificação" do painel deles.
   const dataId =
-    request.nextUrl.searchParams.get("data.id") ??
-    (await request.clone().json().catch(() => null))?.data?.id;
+    request.nextUrl.searchParams.get("data.id") ?? bodyJson?.data?.id ?? bodyJson?.id ?? null;
 
   const xSignature = request.headers.get("x-signature") ?? "";
   const xRequestId = request.headers.get("x-request-id") ?? "";
 
   if (!dataId) {
+    console.error("[mercadopago:webhook] data.id ausente. Corpo recebido:", bodyTexto);
     return NextResponse.json({ error: "data.id ausente" }, { status: 400 });
   }
 
@@ -26,7 +38,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "assinatura inválida" }, { status: 401 });
   }
 
-  const pagamento = await mpPayment.get({ id: dataId });
+  let pagamento;
+  try {
+    pagamento = await mpPayment.get({ id: dataId });
+  } catch (erro) {
+    // Acontece sempre que o id não existe de verdade — é exatamente o caso
+    // do botão "Simular notificação" do painel do Mercado Pago, que manda
+    // um id fictício (ex: "123456"). Não é uma falha real: respondemos 200
+    // para o Mercado Pago não ficar retentando, só não há nada a processar.
+    console.warn("[mercadopago:webhook] pagamento não encontrado na API (provável teste/simulação):", dataId, erro);
+    return NextResponse.json({ received: true, aviso: "pagamento não encontrado — provável simulação" });
+  }
 
   const orderId = pagamento.external_reference;
   if (!orderId) {
