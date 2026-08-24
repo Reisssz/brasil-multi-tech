@@ -57,6 +57,13 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Link
+              href="/vender"
+              className="hidden md:inline-flex items-center justify-center rounded-full border border-brand/60 text-brand hover:bg-brand hover:text-brand-foreground px-4 h-11 text-sm font-semibold whitespace-nowrap transition-colors"
+            >
+              Venda seu aparelho
+            </Link>
+
+            <Link
               href="/conta"
               className="inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
               aria-label="Minha conta"
@@ -150,12 +157,6 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
           </Link>
           <Link href="/mais-vendidos" className="shrink-0 whitespace-nowrap text-ink-muted hover:text-brand font-medium transition-colors">
             Mais vendidos
-          </Link>
-          <Link
-            href="/vender"
-            className="shrink-0 whitespace-nowrap rounded-full border border-brand/50 text-brand px-3 py-1 -my-1 font-semibold hover:bg-brand hover:text-brand-foreground transition-colors"
-          >
-            Venda seu aparelho
           </Link>
           <Link href="/sobre" className="shrink-0 whitespace-nowrap text-ink-muted hover:text-brand font-medium transition-colors">
             Sobre nós
