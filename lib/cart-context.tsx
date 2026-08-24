@@ -26,6 +26,22 @@ async function carregarCatalogo() {
     const resposta = await fetch("/api/produtos");
     const dados = await resposta.json();
     catalogoCache = dados.produtos ?? [];
+
+    // Remove do carrinho qualquer item cujo produto/variante não existe
+    // mais no catálogo (removido/desativado depois de adicionado) — sem
+    // isso o contador do carrinho mostra um número que não bate com o que
+    // a tela /carrinho exibe (ela já escondia esses itens silenciosamente,
+    // mas a contagem continuava incluindo eles).
+    const itensValidos = cartItems.filter((item) => {
+      const produto = catalogoCache.find((p) => p.id === item.productId);
+      return Boolean(produto?.variants.find((v) => v.id === item.variantId));
+    });
+
+    if (itensValidos.length !== cartItems.length) {
+      cartItems = itensValidos;
+      persist();
+      notify();
+    }
   } catch {
     catalogoCache = [];
   } finally {
