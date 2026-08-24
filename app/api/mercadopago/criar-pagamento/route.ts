@@ -202,7 +202,15 @@ export async function POST(request: NextRequest) {
             ]
           : []),
       ],
-      payer: { email: user.email, name: body.customerName },
+      payer: {
+        email: user.email,
+        name: body.customerName.split(" ")[0],
+        surname: body.customerName.split(" ").slice(1).join(" ") || body.customerName.split(" ")[0],
+        identification: {
+          type: "CPF",
+          number: body.cpf.replace(/\D/g, ""),
+        },
+      },
       external_reference: pedido.id,
       back_urls: {
         success: `${siteUrl}/pedido/confirmacao?id=${pedido.id}`,
