@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getFeaturedProducts } from "@/lib/data/products";
+import { getFeaturedProductsDb } from "@/lib/data/products-db";
 import { ProductCard } from "../product/ProductCard";
 import { Reveal } from "../ui/Reveal";
 
-export function FeaturedOffers() {
-  const featured = getFeaturedProducts(8);
+export async function FeaturedOffers() {
+  const featured = await getFeaturedProductsDb(8);
+  if (featured.length === 0) return null;
   return (
     <section className="bg-surface border-y border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14">

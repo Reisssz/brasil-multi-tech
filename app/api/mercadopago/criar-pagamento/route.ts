@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
-import { products } from "@/lib/data/products";
 import { CartItem } from "@/lib/types";
 import { getPixPriceCents, calculateInstallment, formatBRL } from "@/lib/pricing";
 
@@ -13,21 +12,45 @@ interface CriarPagamentoBody {
   customerName: string;
   cpf: string;
   phone: string;
-  address: { cep: string; street: string; city: string; state: string };
+  address: { cep: string; street: string; numero: string; complemento?: string; city: string; state: string };
   frete?: { valorCentavos: number; nome: string; servicoId: number; prazoDias: number };
 }
 
-function resolverItem(item: CartItem) {
-  const produto = products.find((p) => p.id === item.productId);
-  const variante = produto?.variants.find((v) => v.id === item.variantId);
-  return { produto, variante };
+type VarianteBanco = {
+  id: string;
+  color: string | null;
+  storage_gb: number | null;
+  price_cents: number;
+  stock: number;
+  photos: string[];
+  product_id: string;
+  products: { name: string } | null;
+};
+
+/**
+ * Busca produto/variante e preço DIRETO NO BANCO — nunca confiamos em preço
+ * que o navegador manda. Se alguém adulterar a requisição pra tentar pagar
+ * menos, o valor cobrado continua sendo o real, lido aqui.
+ */
+async function resolverItens(supabase: ReturnType<typeof createAdminClient>, items: CartItem[]) {
+  const variantIds = items.map((i) => i.variantId);
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("id, color, storage_gb, price_cents, stock, photos, product_id, products ( name )")
+    .in("id", variantIds);
+
+  if (error) {
+    console.error("[mercadopago:criar-pagamento] falha ao buscar variantes:", error.message);
+    return null;
+  }
+  return data as unknown as VarianteBanco[];
 }
 
 /**
  * Cria o pedido em `orders` (Supabase) e a preferência de pagamento no
- * Mercado Pago. O catálogo ainda é o mock local (`lib/data/products.ts`),
- * então os itens são gravados como snapshot em `orders.items` (jsonb) em
- * vez de linhas relacionais em `order_items`.
+ * Mercado Pago. Preço e disponibilidade são sempre lidos do banco no
+ * momento da compra — o snapshot vai pra `orders.items` (jsonb) pra manter
+ * histórico do que foi comprado mesmo se o produto mudar depois.
  */
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as CriarPagamentoBody | null;
@@ -45,17 +68,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "É preciso estar logado para finalizar a compra." }, { status: 401 });
   }
 
-  const itensResolvidos = body.items.map((item) => {
-    const { produto, variante } = resolverItem(item);
-    return { item, produto, variante };
-  });
+  const adminClient = createAdminClient();
+  const variantes = await resolverItens(adminClient, body.items);
 
-  if (itensResolvidos.some(({ produto, variante }) => !produto || !variante)) {
-    return NextResponse.json({ error: "Um ou mais itens do carrinho não foram encontrados." }, { status: 400 });
+  if (!variantes) {
+    return NextResponse.json({ error: "Não foi possível verificar os produtos do carrinho." }, { status: 502 });
+  }
+
+  const itensResolvidos = body.items.map((item) => ({
+    item,
+    variante: variantes.find((v) => v.id === item.variantId),
+  }));
+
+  if (itensResolvidos.some(({ variante }) => !variante)) {
+    return NextResponse.json(
+      { error: "Um ou mais itens do carrinho não existem mais. Atualize seu carrinho e tente de novo." },
+      { status: 400 }
+    );
+  }
+
+  const semEstoque = itensResolvidos.find(({ variante, item }) => variante!.stock < item.quantity);
+  if (semEstoque) {
+    return NextResponse.json(
+      {
+        error: `"${semEstoque.variante!.products?.name}" não tem mais estoque suficiente (disponível: ${semEstoque.variante!.stock}). Ajuste a quantidade no carrinho.`,
+      },
+      { status: 409 }
+    );
   }
 
   const subtotalCents = itensResolvidos.reduce(
-    (soma, { variante, item }) => soma + variante!.priceCents * item.quantity,
+    (soma, { variante, item }) => soma + variante!.price_cents * item.quantity,
     0
   );
   const freteCents = body.frete?.valorCentavos ?? 0;
@@ -71,15 +114,15 @@ export async function POST(request: NextRequest) {
     parcelas = body.installments ?? 1;
   }
 
-  const itemsSnapshot = itensResolvidos.map(({ item, produto, variante }) => ({
-    productId: item.productId,
+  const itemsSnapshot = itensResolvidos.map(({ item, variante }) => ({
+    productId: variante!.product_id,
     variantId: item.variantId,
-    nome: produto!.name,
+    nome: variante!.products?.name ?? "Produto",
     cor: variante!.color,
-    armazenamento: variante!.storageGb ?? null,
+    armazenamento: variante!.storage_gb,
     quantidade: item.quantity,
-    precoUnitarioCents: variante!.priceCents,
-    imagem: variante!.photos?.[0] ?? variante!.images?.[0] ?? null,
+    precoUnitarioCents: variante!.price_cents,
+    imagem: variante!.photos?.[0] ?? null,
   }));
 
   const { data: pedido, error: erroPedido } = await supabase
@@ -157,7 +200,7 @@ export async function POST(request: NextRequest) {
   // Update via client admin: não há policy de UPDATE para "dono do pedido" em
   // orders (só para admin), de propósito — mp_preference_id é campo de
   // sistema, não algo que o comprador deveria poder escrever diretamente.
-  await createAdminClient().from("orders").update({ mp_preference_id: preferencia.id }).eq("id", pedido.id);
+  await adminClient.from("orders").update({ mp_preference_id: preferencia.id }).eq("id", pedido.id);
 
 
   const initPoint =

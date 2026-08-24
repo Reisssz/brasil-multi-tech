@@ -1,28 +1,41 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { products } from "@/lib/data/products";
 import { formatBRL } from "@/lib/pricing";
-import { getMinPriceCents } from "@/lib/data/products";
+
+type Resultado = { id: string; slug: string; name: string; brand: string; minPriceCents: number };
 
 export function SearchBar({ className = "" }: { className?: string }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [results, setResults] = useState<Resultado[]>([]);
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return [];
-    return products
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      )
-      .slice(0, 6);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const resposta = await fetch(`/api/busca?q=${encodeURIComponent(q)}`);
+        const dados = await resposta.json();
+        setResults(dados.resultados ?? []);
+      } catch {
+        setResults([]);
+      }
+    }, 250);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [query]);
 
   function goToProduct(slug: string) {
@@ -75,7 +88,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
                 <span className="text-xs text-muted">{p.brand}</span>
               </span>
               <span className="text-sm font-semibold text-brand tabular-nums">
-                {formatBRL(getMinPriceCents(p))}
+                {Number.isFinite(p.minPriceCents) ? formatBRL(p.minPriceCents) : ""}
               </span>
             </button>
           ))}

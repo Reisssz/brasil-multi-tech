@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { products } from "@/lib/data/products";
+import { Product } from "@/lib/types";
 import { getMinPriceCents } from "@/lib/data/products";
 import { calculateInstallment, formatBRL, getPixPriceCents, PRICING_RULES } from "@/lib/pricing";
 import { Reveal } from "../ui/Reveal";
 
-export function InstallmentSimulator() {
-  const [productId, setProductId] = useState(products[0].id);
+export function InstallmentSimulator({ products }: { products: Product[] }) {
+  const [productId, setProductId] = useState(products[0]?.id);
   const [installments, setInstallments] = useState(10);
+
+  if (products.length === 0) return null;
 
   const product = products.find((p) => p.id === productId) ?? products[0];
   const priceCents = getMinPriceCents(product);

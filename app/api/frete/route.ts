@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calcularFrete, dimensoesDaVariante, MelhorEnvioApiError } from "@/lib/melhor-envio/client";
-import { products } from "@/lib/data/products";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CartItem } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -18,14 +18,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const supabase = createAdminClient();
+  const variantIds = body.items.map((i) => i.variantId);
+
+  const { data: variantes, error: erroVariantes } = await supabase
+    .from("product_variants")
+    .select("id, price_cents, weight_grams, width_cm, height_cm, length_cm, products ( name )")
+    .in("id", variantIds);
+
+  if (erroVariantes) {
+    console.error("[frete] falha ao buscar variantes:", erroVariantes.message);
+    return NextResponse.json({ error: "Não foi possível calcular o frete agora." }, { status: 502 });
+  }
+
   const itens = body.items.map((item) => {
-    const produto = products.find((p) => p.id === item.productId);
-    const variante = produto?.variants.find((v) => v.id === item.variantId);
-    const dimensoes = dimensoesDaVariante(variante ?? {});
+    const variante = variantes?.find((v) => v.id === item.variantId);
+    const dimensoes = dimensoesDaVariante({
+      weightGrams: variante?.weight_grams,
+      widthCm: variante?.width_cm,
+      heightCm: variante?.height_cm,
+      lengthCm: variante?.length_cm,
+    });
     return {
-      nome: produto?.name ?? "Produto",
+      nome: (Array.isArray(variante?.products) ? variante.products[0]?.name : (variante?.products as { name: string } | undefined)?.name) ?? "Produto",
       quantidade: item.quantity,
-      valorUnitarioCents: variante?.priceCents ?? 0,
+      valorUnitarioCents: variante?.price_cents ?? 0,
       ...dimensoes,
     };
   });

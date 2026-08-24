@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
 import { calculateInstallment, formatBRL, getInstallmentOptions, getPixPriceCents } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
+import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
 
 type Step = 1 | 2 | 3;
 
@@ -32,6 +33,8 @@ export default function CheckoutPage() {
 
   const [cep, setCep] = useState("");
   const [street, setStreet] = useState("");
+  const [numero, setNumero] = useState("");
+  const [complemento, setComplemento] = useState("");
   const [city, setCity] = useState("");
   const [stateUf, setStateUf] = useState("");
 
@@ -48,7 +51,11 @@ export default function CheckoutPage() {
 
   const dadosValid = customerName.trim().length > 2 && email.includes("@") && cpf.trim().length >= 11;
   const enderecoValid =
-    cep.trim().length >= 8 && street.trim().length > 3 && city.trim().length > 1 && stateUf.trim().length === 2;
+    cep.trim().length >= 8 &&
+    street.trim().length > 3 &&
+    numero.trim().length > 0 &&
+    city.trim().length > 1 &&
+    stateUf.trim().length === 2;
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
   const pixTotal = getPixPriceCents(totalCents) + freteCents;
@@ -147,7 +154,7 @@ export default function CheckoutPage() {
           customerName,
           cpf,
           phone,
-          address: { cep, street, city, state: stateUf },
+          address: { cep, street, numero, complemento, city, state: stateUf },
           frete: {
             valorCentavos: freteSelecionado.precoComDescontoCents,
             nome: freteSelecionado.nome,
@@ -268,9 +275,24 @@ export default function CheckoutPage() {
                         <input
                           value={street}
                           onChange={(e) => setStreet(e.target.value)}
-                          placeholder="Endereço, número e complemento"
+                          placeholder="Endereço (rua, avenida)"
                           className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand"
                         />
+                        <div className="grid grid-cols-[100px_1fr] gap-3">
+                          <input
+                            value={numero}
+                            onChange={(e) => setNumero(e.target.value)}
+                            placeholder="Número"
+                            required
+                            className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand"
+                          />
+                          <input
+                            value={complemento}
+                            onChange={(e) => setComplemento(e.target.value)}
+                            placeholder="Complemento (apto, bloco — opcional)"
+                            className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand"
+                          />
+                        </div>
                         <div className="grid grid-cols-[1fr_100px] gap-3">
                           <input
                             value={city}
@@ -440,6 +462,8 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      <CheckoutComboSuggestions />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Logo } from "../ui/Logo";
 import { SearchBar } from "./SearchBar";
 import { useCart } from "@/lib/cart-context";
-import { categories } from "@/lib/data/categories";
+import { ProductCategory } from "@/lib/types";
 import { whatsappLink } from "@/lib/config";
 
 function Chevron() {
@@ -16,7 +16,7 @@ function Chevron() {
   );
 }
 
-export function Header() {
+export function Header({ categories }: { categories: ProductCategory[] }) {
   const { totalCount } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);

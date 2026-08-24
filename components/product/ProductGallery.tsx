@@ -20,7 +20,7 @@ export function ProductGallery({
   const slotCount = Math.max(images.length, photos?.length ?? 0);
   const slots = Array.from({ length: slotCount }, (_, i) => ({
     icon: images[i] ?? images[0] ?? "accessory",
-    photoSrc: photos?.[i] ? `/products/${photos[i]}` : undefined,
+    photoSrc: photos?.[i] ? (/^https?:\/\//.test(photos[i]) ? photos[i] : `/products/${photos[i]}`) : undefined,
   }));
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {

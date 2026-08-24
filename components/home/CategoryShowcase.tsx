@@ -1,12 +1,18 @@
 import Link from "next/link";
-import { categories } from "@/lib/data/categories";
-import { getCategoryPhoto } from "@/lib/data/products";
+import { getCategoriesForShowcaseDb, getCategoryPhotoDb } from "@/lib/data/products-db";
 import { formatBRL } from "@/lib/pricing";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { Reveal } from "../ui/Reveal";
 
-export function CategoryShowcase() {
+export async function CategoryShowcase() {
+  const categories = await getCategoriesForShowcaseDb();
+  if (categories.length === 0) return null;
+
   const [featured, ...rest] = categories;
+  const [featuredPhoto, ...restPhotos] = await Promise.all([
+    getCategoryPhotoDb(featured.slug),
+    ...rest.map((c) => getCategoryPhotoDb(c.slug)),
+  ]);
 
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 py-14">
@@ -28,7 +34,7 @@ export function CategoryShowcase() {
             </span>
             <ProductImage
               icon={featured.image as ProductIconKey}
-              photoSrc={getCategoryPhoto(featured.slug)}
+              photoSrc={featuredPhoto}
               tint="brand"
               className="flex-1 min-h-[180px] lg:min-h-0 w-full"
             />
@@ -56,7 +62,7 @@ export function CategoryShowcase() {
             >
               <ProductImage
                 icon={c.image as ProductIconKey}
-                photoSrc={getCategoryPhoto(c.slug)}
+                photoSrc={restPhotos[i]}
                 className="aspect-[4/3] w-full"
               />
               <div className="p-4 flex flex-col gap-0.5">

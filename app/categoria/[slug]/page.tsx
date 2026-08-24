@@ -1,12 +1,7 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { categories, getCategoryBySlug } from "@/lib/data/categories";
-import { getProductsByCategory, products } from "@/lib/data/products";
+import { getProductsByCategoryDb, getCategoryNameBySlugDb } from "@/lib/data/products-db";
 import { CategoryListing } from "@/components/product/CategoryListing";
-
-export function generateStaticParams() {
-  return [...categories.map((c) => ({ slug: c.slug })), { slug: "ofertas" }];
-}
 
 export async function generateMetadata({
   params,
@@ -15,21 +10,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   if (slug === "ofertas") return { title: "Ofertas" };
-  const category = getCategoryBySlug(slug);
-  return { title: category ? category.name : "Categoria" };
+  const nome = await getCategoryNameBySlugDb(slug);
+  return { title: nome ?? "Categoria" };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
   if (slug === "ofertas") {
-    const offers = products.filter((p) => p.variants.some((v) => v.compareAtCents && v.compareAtCents > v.priceCents));
+    const offers = await getProductsByCategoryDb("ofertas");
     return <CategoryListing products={offers} title="Ofertas" />;
   }
 
-  const category = getCategoryBySlug(slug);
-  if (!category) notFound();
+  const nome = await getCategoryNameBySlugDb(slug);
+  if (!nome) notFound();
 
-  const items = getProductsByCategory(slug);
-  return <CategoryListing products={items} title={category.name} />;
+  const items = await getProductsByCategoryDb(slug);
+  return <CategoryListing products={items} title={nome} />;
 }

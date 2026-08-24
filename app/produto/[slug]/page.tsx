@@ -1,13 +1,11 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { getProductBySlug, getRelatedProducts, getMinPriceCents, products } from "@/lib/data/products";
+import { getProductBySlugDb, getProductBySlugForMetadataDb, getRelatedProductsDb } from "@/lib/data/products-db";
+import { getMinPriceCents } from "@/lib/data/products";
 import { ProductDetail } from "@/components/product/ProductDetail";
+import { ComboSuggestions } from "@/components/product/ComboSuggestions";
 import { getPixPriceCents } from "@/lib/pricing";
 import { SITE } from "@/lib/config";
-
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
-}
 
 export async function generateMetadata({
   params,
@@ -15,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlugForMetadataDb(slug);
   if (!product) return { title: "Produto não encontrado" };
   return {
     title: `${product.brand} ${product.name} — ${product.tagline}`,
@@ -29,10 +27,10 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlugDb(slug);
   if (!product) notFound();
 
-  const related = getRelatedProducts(product);
+  const related = await getRelatedProductsDb(product);
   const priceCents = getMinPriceCents(product);
 
   const jsonLd = {
@@ -65,6 +63,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <ProductDetail product={product} related={related} />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <ComboSuggestions productId={product.id} category={product.category} />
+      </div>
     </>
   );
 }

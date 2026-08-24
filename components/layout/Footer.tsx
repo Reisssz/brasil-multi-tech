@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { categories } from "@/lib/data/categories";
+import { ProductCategory } from "@/lib/types";
 import { SITE, whatsappLink } from "@/lib/config";
 
-export function Footer() {
+export function Footer({ categories }: { categories: ProductCategory[] }) {
   return (
     <footer className="mt-16 bg-ink-2 text-ink-muted">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 grid grid-cols-2 md:grid-cols-5 gap-8 [&>div]:min-w-0">

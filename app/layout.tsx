@@ -8,6 +8,7 @@ import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import { NewsletterPopup } from "@/components/layout/NewsletterPopup";
 import { CartProvider } from "@/lib/cart-context";
 import { SITE } from "@/lib/config";
+import { getCategoriesForShowcaseDb } from "@/lib/data/products-db";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,11 +51,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const categories = await getCategoriesForShowcaseDb();
+
   return (
     <html
       lang="pt-BR"
@@ -63,9 +66,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <CartProvider>
           <TopBar />
-          <Header />
+          <Header categories={categories} />
           <main className="flex-1 flex flex-col">{children}</main>
-          <Footer />
+          <Footer categories={categories} />
           <WhatsAppFloat />
           <NewsletterPopup />
         </CartProvider>

@@ -1,8 +1,7 @@
 "use client";
 
-import { createContext, useContext, useSyncExternalStore } from "react";
-import { CartItem } from "./types";
-import { products } from "./data/products";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import { CartItem, Product } from "./types";
 
 const STORAGE_KEY = "bmt_cart_v1";
 
@@ -11,6 +10,29 @@ const EMPTY_ITEMS: CartItem[] = [];
 let cartItems: CartItem[] = EMPTY_ITEMS;
 let hydratedFromStorage = false;
 const listeners = new Set<() => void>();
+
+// Cache do catálogo, buscado de /api/produtos assim que o CartProvider monta.
+// Substitui o import estático de lib/data/products (mock) — o catálogo real
+// agora vive no Supabase, e resolveCartLine() precisa ser síncrono (é
+// chamado durante a renderização em várias telas), então mantemos esse
+// cache em memória em vez de buscar por item toda vez.
+let catalogoCache: Product[] = [];
+let catalogoCarregado = false;
+const catalogoListeners = new Set<() => void>();
+
+async function carregarCatalogo() {
+  if (catalogoCarregado) return;
+  try {
+    const resposta = await fetch("/api/produtos");
+    const dados = await resposta.json();
+    catalogoCache = dados.produtos ?? [];
+  } catch {
+    catalogoCache = [];
+  } finally {
+    catalogoCarregado = true;
+    catalogoListeners.forEach((l) => l());
+  }
+}
 
 function readFromStorage(): CartItem[] {
   try {
@@ -94,10 +116,23 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  // Garante que o cache do catálogo é buscado uma vez por sessão de navegação.
+  useSyncExternalStore(
+    (cb) => {
+      catalogoListeners.add(cb);
+      return () => catalogoListeners.delete(cb);
+    },
+    () => catalogoCarregado,
+    () => false
+  );
+
+  useEffect(() => {
+    carregarCatalogo();
+  }, []);
 
   const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalCents = items.reduce((sum, i) => {
-    const product = products.find((p) => p.id === i.productId);
+    const product = catalogoCache.find((p) => p.id === i.productId);
     const variant = product?.variants.find((v) => v.id === i.variantId);
     return sum + (variant ? variant.priceCents * i.quantity : 0);
   }, 0);
@@ -122,7 +157,8 @@ export function useCart() {
 }
 
 export function resolveCartLine(item: CartItem) {
-  const product = products.find((p) => p.id === item.productId);
+  const product = catalogoCache.find((p) => p.id === item.productId);
   const variant = product?.variants.find((v) => v.id === item.variantId);
   return { product, variant };
 }
+

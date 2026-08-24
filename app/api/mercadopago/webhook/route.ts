@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  const { data: pedidoAtual } = await supabase
+    .from("orders")
+    .select("status, user_id, items")
+    .eq("id", orderId)
+    .single();
+
   await supabase.from("payments").upsert(
     {
       order_id: orderId,
@@ -52,10 +58,17 @@ export async function POST(request: NextRequest) {
   if (statusPedido) {
     await supabase.from("orders").update({ status: statusPedido }).eq("id", orderId);
 
-    if (statusPedido === "paid") {
-      const { data: pedido } = await supabase.from("orders").select("user_id").eq("id", orderId).single();
+    // Só baixa estoque na PRIMEIRA vez que o pedido vira "paid" — o Mercado
+    // Pago pode reenviar o mesmo webhook várias vezes, e sem essa checagem
+    // o estoque descontaria em dobro/triplo a cada reentrega.
+    if (statusPedido === "paid" && pedidoAtual?.status !== "paid") {
+      const itens = (pedidoAtual?.items ?? []) as Array<{ variantId: string; quantidade: number }>;
+      for (const item of itens) {
+        await supabase.rpc("decrement_stock", { p_variant_id: item.variantId, p_qty: item.quantidade });
+      }
+
       await supabase.from("activity_logs").insert({
-        user_id: pedido?.user_id ?? null,
+        user_id: pedidoAtual?.user_id ?? null,
         event_type: "order_paid",
         metadata: { pedidoId: orderId, valor: pagamento.transaction_amount },
       });

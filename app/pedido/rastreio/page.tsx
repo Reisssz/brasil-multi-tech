@@ -16,7 +16,7 @@ type Pedido = {
   status: string;
   total: number;
   items: Array<{ nome: string; cor: string; quantidade: number }>;
-  endereco_entrega: { street: string; city: string; state: string };
+  endereco_entrega: { street: string; numero: string; city: string; state: string };
   created_at: string;
 };
 
@@ -125,7 +125,9 @@ function TrackingContent() {
 
           <div className="border-t border-border pt-4 text-sm text-muted">
             <p>
-              Entrega para {pedido.endereco_entrega.street}, {pedido.endereco_entrega.city}/
+              Entrega para {pedido.endereco_entrega.street}, {pedido.endereco_entrega.numero}
+              {" — "}
+              {pedido.endereco_entrega.city}/
               {pedido.endereco_entrega.state}
             </p>
           </div>

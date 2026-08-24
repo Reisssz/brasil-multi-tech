@@ -788,12 +788,16 @@ export function getMinPriceCents(product: Product) {
   return Math.min(...product.variants.map((v) => v.priceCents));
 }
 
+function resolvePhotoSrc(filenameOuUrl: string): string {
+  return /^https?:\/\//.test(filenameOuUrl) ? filenameOuUrl : `/products/${filenameOuUrl}`;
+}
+
 export function getMainPhoto(variant: Product["variants"][number]): string | undefined {
-  return variant.photos?.[0] ? `/products/${variant.photos[0]}` : undefined;
+  return variant.photos?.[0] ? resolvePhotoSrc(variant.photos[0]) : undefined;
 }
 
 export function getPhotoAt(variant: Product["variants"][number], index: number): string | undefined {
-  return variant.photos?.[index] ? `/products/${variant.photos[index]}` : undefined;
+  return variant.photos?.[index] ? resolvePhotoSrc(variant.photos[index]) : undefined;
 }
 
 /** First real photo found among a category's products, used for category tiles/showcases. */
