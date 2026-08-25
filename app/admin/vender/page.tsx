@@ -49,33 +49,51 @@ export default async function AdminVender() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
-              <Info label="Tela" valor={s.screen_condition} />
-              <Info label="Carcaça" valor={s.body_condition} />
-              <Info label="Bateria" valor={s.battery_health} />
-              <Info label="Liga normalmente" valor={s.turns_on ? "Sim" : "Não"} />
+              <Info label="Liga" valor={s.turns_on ? "Sim" : "Não"} />
+              <Info label="Faz/recebe ligação" valor={s.faz_recebe_ligacoes ? "Sim" : "Não"} />
+              <Info label="Wifi/Bluetooth" valor={s.wifi_bluetooth_ok ? "Sim" : "Não"} />
+              <Info label="Marcas de uso" valor={s.marcas_de_uso} />
+              <Info label="Traseira/lateral danificada" valor={s.traseira_lateral_danificada ? "Sim" : "Não"} />
+              <Info label="Tela danificada" valor={s.tela_danificada ? "Sim" : "Não"} />
+              <Info label="Biometria funciona" valor={s.biometria_funciona ? "Sim" : "Não"} />
+              <Info label="Câmera com problema" valor={s.camera_com_problema ? "Sim" : "Não"} />
+              <Info label="Saúde da bateria" valor={s.saude_bateria} />
+              <Info label="Peça não genuína" valor={s.peca_nao_genuina ? "Sim" : "Não"} />
             </div>
 
-            {s.broken_parts?.length > 0 && (
-              <p className="text-xs text-red-600 mb-1">Peças quebradas: {s.broken_parts.join(", ")}</p>
-            )}
-            {s.replaced_parts?.length > 0 && (
-              <p className="text-xs text-muted mb-1">Peças trocadas: {s.replaced_parts.join(", ")}</p>
-            )}
             {s.notes && <p className="text-xs text-muted mb-2 italic">&ldquo;{s.notes}&rdquo;</p>}
 
-            <div className="flex items-center justify-between border-t border-border pt-3 mt-3">
-              <div className="text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 mt-3 text-sm">
+              <span>
+                <span className="text-muted">Modalidade: </span>
+                <span className="font-semibold text-foreground">
+                  {s.offer_type === "mais_valor" ? "Venda Mais Valor" : s.offer_type === "agora" ? "Venda Agora" : "—"}
+                </span>
+              </span>
+              <span>
                 <span className="text-muted">Estimativa automática: </span>
                 <span className="font-semibold text-foreground">
                   {s.estimated_value_cents ? formatBRL(s.estimated_value_cents) : "—"}
                 </span>
-                {s.final_value_cents && (
-                  <span className="ml-3 text-success font-semibold">
-                    Proposta final: {formatBRL(s.final_value_cents)}
-                  </span>
-                )}
-              </div>
+              </span>
+              {s.final_value_cents && (
+                <span className="text-success font-semibold">Proposta final: {formatBRL(s.final_value_cents)}</span>
+              )}
             </div>
+
+            {s.contract_accepted_at && (
+              <p className="text-xs text-success mt-2">
+                ✓ Contrato assinado por {s.contract_accepted_name} em{" "}
+                {new Date(s.contract_accepted_at).toLocaleString("pt-BR")}
+              </p>
+            )}
+
+            {s.payment_method && (
+              <p className="text-xs text-muted mt-1">
+                Receber por <strong>{s.payment_method === "pix" ? "Pix" : "Transferência"}</strong>:{" "}
+                {s.payment_method === "pix" ? s.payment_pix_key : s.payment_bank_details}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <form action={definirValorFinal.bind(null, s.id)} className="flex items-center gap-2">
@@ -121,11 +139,11 @@ export default async function AdminVender() {
   );
 }
 
-function Info({ label, valor }: { label: string; valor: string }) {
+function Info({ label, valor }: { label: string; valor: string | null | undefined }) {
   return (
     <div className="rounded-lg bg-[#f7f8fa] px-2.5 py-1.5">
       <span className="block text-[10px] text-muted uppercase">{label}</span>
-      <span className="font-medium text-foreground">{valor.replace(/_/g, " ")}</span>
+      <span className="font-medium text-foreground">{valor ? valor.replace(/_/g, " ") : "—"}</span>
     </div>
   );
 }

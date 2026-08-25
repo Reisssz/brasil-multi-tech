@@ -2,7 +2,7 @@ const sections = [
   {
     title: "Garantia Brasil Multi Tech",
     body:
-      "Todos os produtos novos contam com garantia de fábrica somada à garantia estendida da Brasil Multi Tech. Aparelhos seminovos têm garantia de 12 meses cobrindo defeitos de fabricação e funcionamento, incluindo bateria, tela e câmeras.",
+      "Todos os produtos novos contam com garantia de fábrica somada à garantia estendida da Brasil Multi Tech. Aparelhos seminovos têm garantia de 6 meses cobrindo defeitos de fabricação e funcionamento, incluindo bateria, tela e câmeras.",
   },
   {
     title: "O que a garantia cobre",

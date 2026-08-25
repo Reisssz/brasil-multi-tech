@@ -7,7 +7,7 @@ import { Reveal } from "../ui/Reveal";
 const stats = [
   { value: `${(SITE.devicesDelivered / 1000).toFixed(0)}mil+`, label: "aparelhos entregues" },
   { value: `${(SITE.happyCustomers / 1000).toFixed(0)}mil+`, label: "clientes satisfeitos" },
-  { value: "12 meses", label: "de garantia em todos os produtos" },
+  { value: "6 meses", label: "de garantia em todos os produtos" },
   { value: "7 dias", label: "para troca sem burocracia" },
 ];
 

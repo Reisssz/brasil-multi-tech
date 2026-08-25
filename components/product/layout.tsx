@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: `%s — ${SITE.name}`,
   },
   description:
-    "Compre celulares novos e seminovos, notebooks e acessórios com garantia de até 6 meses, desconto no Pix e parcelamento em até 18x. Entrega para todo o Brasil.",
+    "Compre celulares novos e seminovos, notebooks e acessórios com garantia de até 6 meses e parcelamento em até 18x. Entrega para todo o Brasil.",
   keywords: [
     "celulares seminovos",
     "iphone seminovo",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: `${SITE.name} — Tecnologia acessível, com garantia de verdade`,
     description:
-      "Celulares, notebooks e acessórios com garantia, desconto no Pix e parcelamento em até 18x.",
+      "Celulares, notebooks e acessórios com garantia e parcelamento em até 18x.",
     siteName: SITE.name,
     locale: "pt_BR",
     type: "website",

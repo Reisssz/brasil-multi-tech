@@ -2,7 +2,7 @@ import { InstallmentOption } from "./types";
 
 /** Global commercial rules — in production these come from the admin panel / pricing service. */
 export const PRICING_RULES = {
-  pixDiscountPercent: 8,
+  pixDiscountPercent: 0,
   maxInstallments: 18,
   interestFreeUpTo: 10,
   monthlyInterestRate: 0.0199,

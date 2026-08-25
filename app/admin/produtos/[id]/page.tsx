@@ -22,10 +22,9 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
   if (!produto) notFound();
 
   const acaoComId = atualizarProduto.bind(null, produto.id);
-  const primeiraFoto = produto.product_variants.find((v) => v.photos?.[0])?.photos?.[0];
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
+    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
       <h1 className="font-display text-2xl font-bold text-foreground mb-6">Editar produto</h1>
       <FormularioProduto
         categorias={categorias ?? []}
@@ -41,7 +40,6 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
           warrantyMonths: produto.warranty_months,
           freeShipping: produto.free_shipping,
           ativo: produto.ativo,
-          fotoAtual: primeiraFoto ? (/^https?:\/\//.test(primeiraFoto) ? primeiraFoto : `/products/${primeiraFoto}`) : null,
           variantes: produto.product_variants.map((v) => ({
             color: v.color ?? "",
             colorHex: v.color_hex,
@@ -51,6 +49,7 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
             compareAt: v.compare_at_cents ? (v.compare_at_cents / 100).toString() : "",
             stock: v.stock.toString(),
             sku: v.sku ?? "",
+            photos: v.photos ?? [],
           })),
         }}
       />

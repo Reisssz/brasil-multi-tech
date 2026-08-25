@@ -26,16 +26,16 @@ async function verificarAdmin(supabase: Awaited<ReturnType<typeof createClient>>
 
 async function fazerUploadImagens(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  produtoSlug: string,
+  caminhoBase: string,
   arquivos: File[]
 ): Promise<string[]> {
   const urls: string[] = [];
 
   for (const [indice, arquivo] of arquivos.entries()) {
-    if (!arquivo || arquivo.size === 0) continue
+    if (!arquivo || arquivo.size === 0) continue;
 
     const extensao = arquivo.name.split(".").pop();
-    const caminho = `${produtoSlug}/${Date.now()}-${indice}.${extensao}`;
+    const caminho = `${caminhoBase}/${Date.now()}-${indice}.${extensao}`;
 
     const { error } = await supabase.storage.from("produtos").upload(caminho, arquivo, {
       cacheControl: "31536000",
@@ -54,6 +54,12 @@ async function fazerUploadImagens(
   return urls;
 }
 
+/**
+ * Extrai as variações do formulário, mantendo o ÍNDICE ORIGINAL de cada
+ * linha (antes do filtro por preço válido) — é esse índice que liga cada
+ * variação aos seus campos de foto (varianteImagens_N,
+ * varianteFotosExistentes_N), então precisa sobreviver ao filtro.
+ */
 function extrairVariantes(formData: FormData) {
   const cores = formData.getAll("varianteCor") as string[];
   const coresHex = formData.getAll("varianteCorHex") as string[];
@@ -66,6 +72,7 @@ function extrairVariantes(formData: FormData) {
 
   return cores
     .map((cor, i) => ({
+      indiceOriginal: i,
       color: cor || null,
       color_hex: coresHex[i] || "#9aa0a6",
       storage_gb: storages[i] ? Number(storages[i]) : null,
@@ -102,14 +109,6 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
 
   const slug = `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`;
 
-  const arquivos = formData.getAll("imagens") as File[];
-  const urls = await fazerUploadImagens(supabase, slug, arquivos);
-  // Todas as fotos enviadas ficam disponíveis para a primeira variante; nas
-  // demais variantes o admin pode reenviar fotos específicas depois, editando.
-  if (urls.length > 0 && variantes[0]) {
-    (variantes[0] as { photos?: string[] }).photos = urls;
-  }
-
   const { data: produto, error } = await supabase
     .from("products")
     .insert({
@@ -132,11 +131,20 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
     return { erro: "Não foi possível salvar o produto." };
   }
 
+  // Cada variação recebe SÓ as fotos enviadas no seu próprio campo de
+  // upload (varianteImagens_<índice original da linha no formulário>).
+  const variantesComFotos = await Promise.all(
+    variantes.map(async (v) => {
+      const arquivos = formData.getAll(`varianteImagens_${v.indiceOriginal}`) as File[];
+      const photos = arquivos.length > 0 ? await fazerUploadImagens(supabase, `${slug}/variante-${v.indiceOriginal}`, arquivos) : [];
+      return { ...v, photos };
+    })
+  );
+
   const { error: erroVariantes } = await supabase.from("product_variants").insert(
-    variantes.map((v) => ({
+    variantesComFotos.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
       ...v,
       product_id: produto.id,
-      photos: (v as { photos?: string[] }).photos ?? [],
       sku: v.sku || `v-${slug}-${Math.random().toString(36).slice(2, 8)}`,
     }))
   );
@@ -204,18 +212,31 @@ export async function atualizarProduto(
   // afetados porque guardam um snapshot em orders.items, não uma referência
   // viva à variante.
   const variantes = extrairVariantes(formData);
-  const arquivosNovos = (formData.getAll("imagens") as File[]).filter((f) => f && f.size > 0);
-  const novasUrls =
-    arquivosNovos.length > 0 ? await fazerUploadImagens(supabase, produtoAtual?.slug ?? produtoId, arquivosNovos) : [];
 
-  if (variantes.length > 0) {
+  const variantesComFotos = await Promise.all(
+    variantes.map(async (v) => {
+      // Fotos que já existiam nessa linha e o admin NÃO removeu (o
+      // formulário só reenvia as que sobraram depois de clicar em remover).
+      const fotosExistentes = formData.getAll(`varianteFotosExistentes_${v.indiceOriginal}`) as string[];
+      const arquivosNovos = (formData.getAll(`varianteImagens_${v.indiceOriginal}`) as File[]).filter(
+        (f) => f && f.size > 0
+      );
+      const novasUrls =
+        arquivosNovos.length > 0
+          ? await fazerUploadImagens(supabase, `${produtoAtual?.slug ?? produtoId}/variante-${v.indiceOriginal}`, arquivosNovos)
+          : [];
+
+      return { ...v, photos: [...fotosExistentes, ...novasUrls] };
+    })
+  );
+
+  if (variantesComFotos.length > 0) {
     await supabase.from("product_variants").delete().eq("product_id", produtoId);
 
     const { error: erroVariantes } = await supabase.from("product_variants").insert(
-      variantes.map((v, i) => ({
+      variantesComFotos.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
         ...v,
         product_id: produtoId,
-        photos: i === 0 && novasUrls.length > 0 ? novasUrls : [],
         sku: v.sku || `v-${produtoAtual?.slug ?? produtoId}-${Math.random().toString(36).slice(2, 8)}`,
       }))
     );

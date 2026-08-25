@@ -10,7 +10,7 @@ const banners = [
     photo: "/products/iphone13-midnight-1.webp",
   },
   {
-    title: "12 meses",
+    title: "6 meses",
     subtitle: "de garantia em todos os produtos",
     href: "/garantia",
     photo: "/products/iphone12-black-1.png",

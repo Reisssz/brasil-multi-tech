@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL, getInstallmentOptions, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, getInstallmentOptions } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { StarRating } from "../ui/StarRating";
@@ -12,7 +12,6 @@ export function ProductCard({ product }: { product: Product }) {
   // condition badge and the price shown never contradict each other.
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);
   const priceCents = getMinPriceCents(product);
-  const pixPrice = getPixPriceCents(priceCents);
   const hasDiscount = product.variants.some((v) => v.compareAtCents && v.compareAtCents > v.priceCents);
   const discountPercent = hasDiscount
     ? Math.round(
@@ -62,8 +61,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
           <span className="text-[11px] text-muted">A partir de</span>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-display text-2xl font-bold tabular-nums text-foreground">{formatBRL(pixPrice)}</span>
-            <span className="text-[11px] font-semibold text-success">no pix</span>
+            <span className="font-display text-2xl font-bold tabular-nums text-foreground">{formatBRL(priceCents)}</span>
           </div>
         </div>
 

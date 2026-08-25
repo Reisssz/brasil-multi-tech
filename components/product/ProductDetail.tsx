@@ -298,7 +298,7 @@ export function ProductDetail({
           <span className="font-display text-base font-bold tabular-nums text-foreground">
             {formatBRL(activeVariant.priceCents)}
           </span>
-          <span className="text-[11px] text-muted">à vista no Pix com desconto</span>
+          <span className="text-[11px] text-muted">à vista</span>
         </div>
         <button
           onClick={handleAddToCart}

@@ -42,7 +42,7 @@ export const products: Product[] = [
     brand: "Apple",
     name: "iPhone 11",
     category: "celulares",
-    tagline: "Seminovo com selo de qualidade e garantia de 12 meses",
+    tagline: "Seminovo com selo de qualidade e garantia de 6 meses",
     description:
       "iPhone 11 revisado por técnicos certificados, com bateria testada e reset completo de fábrica. Aparelho desbloqueado para qualquer operadora.",
     highlights: [
@@ -134,7 +134,7 @@ export const products: Product[] = [
     tagline: "Seminovo, câmera tripla, tela grande",
     description:
       "iPhone 11 Pro Max seminovo com sistema de câmera tripla de 12MP, tela Super Retina XDR e bateria testada. Revisado por técnicos certificados.",
-    highlights: ["Câmera tripla 12MP", "Bateria testada acima de 85%", "Garantia de 12 meses"],
+    highlights: ["Câmera tripla 12MP", "Bateria testada acima de 85%", "Garantia de 6 meses"],
     warrantyMonths: 12,
     freeShipping: true,
     rating: 4.8,
@@ -199,7 +199,7 @@ export const products: Product[] = [
     tagline: "Seminovo revisado, tela OLED e 5G",
     description:
       "iPhone 12 seminovo com tela Super Retina XDR OLED, conectividade 5G e bateria testada. Aparelho revisado e desbloqueado.",
-    highlights: ["Conectividade 5G", "Tela OLED Super Retina", "Garantia de 12 meses"],
+    highlights: ["Conectividade 5G", "Tela OLED Super Retina", "Garantia de 6 meses"],
     warrantyMonths: 12,
     freeShipping: true,
     rating: 4.8,
@@ -261,7 +261,7 @@ export const products: Product[] = [
     brand: "Apple",
     name: "iPhone 13",
     category: "celulares",
-    tagline: "Seminovo com selo de qualidade e garantia de 12 meses",
+    tagline: "Seminovo com selo de qualidade e garantia de 6 meses",
     description:
       "iPhone 13 revisado por técnicos certificados, com bateria testada acima de 85% de capacidade e reset completo de fábrica. Aparelho desbloqueado para qualquer operadora.",
     highlights: [
@@ -364,7 +364,7 @@ export const products: Product[] = [
     tagline: "Seminovo revisado, câmera de 50MP e tela 120Hz",
     description:
       "Galaxy S23 seminovo com verificação de 40 pontos, tela Dynamic AMOLED 120Hz e desempenho Snapdragon 8 Gen 2.",
-    highlights: ["Testado em 40 pontos de qualidade", "Sem riscos visíveis a 30cm", "Garantia de 12 meses"],
+    highlights: ["Testado em 40 pontos de qualidade", "Sem riscos visíveis a 30cm", "Garantia de 6 meses"],
     warrantyMonths: 12,
     freeShipping: true,
     rating: 4.7,
@@ -495,7 +495,7 @@ export const products: Product[] = [
     tagline: "Seminovo revisado, ideal para trabalho e estudos",
     description:
       "Notebook Dell seminovo com processador Intel Core i3 de 7ª geração, revisado e testado. Ótimo custo-benefício para o dia a dia, trabalho remoto e estudos.",
-    highlights: ["Intel Core i3 7ª geração", "Revisado e testado", "Garantia de 12 meses"],
+    highlights: ["Intel Core i3 7ª geração", "Revisado e testado", "Garantia de 6 meses"],
     warrantyMonths: 12,
     freeShipping: true,
     rating: 4.6,

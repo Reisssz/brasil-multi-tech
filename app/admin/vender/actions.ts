@@ -14,9 +14,17 @@ export async function definirValorFinal(solicitacaoId: string, formData: FormDat
   const valor = Number(formData.get("valorFinal") ?? 0);
   if (valor <= 0) return;
 
+  const expiraEm = new Date();
+  expiraEm.setDate(expiraEm.getDate() + 7);
+
   await supabase
     .from("trade_in_requests")
-    .update({ final_value_cents: Math.round(valor * 100), status: "proposta_enviada", updated_at: new Date().toISOString() })
+    .update({
+      final_value_cents: Math.round(valor * 100),
+      status: "proposta_enviada",
+      proposal_expires_at: expiraEm.toISOString(),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", solicitacaoId);
 
   revalidatePath("/admin/vender");
