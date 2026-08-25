@@ -70,7 +70,8 @@ async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa =
   return corpo as T;
 }
 
-function enderecoRemetente() {
+/** Só o CEP de origem, validado — suficiente pra COTAR frete (calculate não exige nome/documento do remetente). */
+function cepOrigemValidado() {
   const cepOrigem = (process.env.MELHOR_ENVIO_CEP_ORIGEM ?? "").replace(/\D/g, "");
 
   if (cepOrigem.length !== 8) {
@@ -82,7 +83,28 @@ function enderecoRemetente() {
     );
   }
 
+  return cepOrigem;
+}
+
+/** Endereço completo do remetente — só é exigido de verdade na COMPRA da etiqueta (/me/cart), não na cotação. */
+function enderecoRemetente() {
+  const cepOrigem = cepOrigemValidado();
+
+  const nome = process.env.MELHOR_ENVIO_NOME_REMETENTE ?? "";
+  const documento = (process.env.MELHOR_ENVIO_DOCUMENTO_REMETENTE ?? "").replace(/\D/g, "");
+
+  if (!nome) {
+    // O cálculo de frete não precisa disso, mas a COMPRA da etiqueta exige
+    // — sem essa checagem, o erro só aparece na hora de gerar a etiqueta,
+    // sem contexto nenhum de qual variável está faltando.
+    throw new Error(
+      "MELHOR_ENVIO_NOME_REMETENTE não configurado. Configure o nome de quem está enviando (pessoa física ou razão social) nas variáveis de ambiente."
+    );
+  }
+
   return {
+    name: nome,
+    document: documento || undefined,
     postal_code: cepOrigem,
     address: process.env.MELHOR_ENVIO_ENDERECO_REMETENTE!,
     number: process.env.MELHOR_ENVIO_NUMERO_REMETENTE!,
@@ -136,7 +158,7 @@ const SERVICO_PAC = 1;
 const SERVICO_SEDEX = 2;
 
 export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]): Promise<OpcaoFrete[]> {
-  const remetente = enderecoRemetente();
+  const cepOrigem = cepOrigemValidado();
 
   const resultado = await melhorEnvioFetch<
     Array<{
@@ -152,7 +174,7 @@ export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]):
   >("/me/shipment/calculate", {
     method: "POST",
     body: JSON.stringify({
-      from: { postal_code: remetente.postal_code },
+      from: { postal_code: cepOrigem },
       to: { postal_code: cepDestino },
       products: itens.map((item, indice) => ({
         id: String(indice),
