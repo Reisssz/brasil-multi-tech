@@ -22,8 +22,16 @@ export async function GET(request: NextRequest) {
     .eq("id", id)
     .single();
 
-  if (error || !pedido || pedido.user_id !== user.id) {
+  if (error || !pedido) {
     return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
+  }
+
+  if (pedido.user_id !== user.id) {
+    // Não é o dono do pedido — só deixa passar se for admin.
+    const { data: perfil } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (perfil?.role !== "admin") {
+      return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
+    }
   }
 
   const { data: envio } = await supabase

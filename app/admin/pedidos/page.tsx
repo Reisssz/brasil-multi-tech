@@ -49,7 +49,7 @@ export default async function AdminPedidos() {
             {pedidos.map((pedido) => (
               <tr key={pedido.id} className="border-t border-border">
                 <td className="px-4 py-3">
-                  <Link href={`/pedido/rastreio?id=${pedido.id}`} className="font-medium text-foreground hover:text-brand">
+                  <Link href={`/admin/pedidos/${pedido.id}`} className="font-medium text-foreground hover:text-brand">
                     #{pedido.id.slice(0, 8)}
                   </Link>
                 </td>
