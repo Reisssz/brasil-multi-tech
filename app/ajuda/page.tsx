@@ -13,8 +13,9 @@ const faqs = [
     answer: `Pagando via Pix você recebe ${PRICING_RULES.pixDiscountPercent}% de desconto automático no valor total da compra, aplicado direto no checkout, sem cupom.`,
   },
   {
-    question: `Posso parcelar em até ${PRICING_RULES.maxInstallments}x?`,
-    answer: `Sim. Compras no cartão de crédito podem ser parceladas em até ${PRICING_RULES.maxInstallments}x, sendo as primeiras ${PRICING_RULES.interestFreeUpTo}x sem juros.`,
+    question: "Posso parcelar no cartão de crédito?",
+    answer:
+      "Sim. O pagamento no cartão é processado pelo Mercado Pago, e as opções de parcelas — incluindo quais vêm sem juros — aparecem na tela de pagamento no momento da compra, de acordo com o seu cartão.",
   },
   {
     question: "O que significa um aparelho \"seminovo\"?",

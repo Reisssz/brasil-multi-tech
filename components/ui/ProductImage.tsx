@@ -71,6 +71,9 @@ const icons: Record<ProductIconKey, (accent: string) => React.ReactNode> = {
 const tints = {
   neutral: "bg-gradient-to-b from-[#fbfbfc] to-[#f0f1f3]",
   brand: "bg-gradient-to-br from-brand-light to-[#f6ecd2]",
+  // Fundo liso branco — combina com o padrão de fundo branco das fotos
+  // reais dos produtos, em vez de destacar a borda da foto com um degradê.
+  white: "bg-white",
 };
 
 export function ProductImage({

@@ -9,7 +9,7 @@ const items = [
     ),
   },
   {
-    label: `Até ${PRICING_RULES.maxInstallments}x sem complicação`,
+    label: "Parcele no cartão de crédito",
     icon: <path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z M3 10h18 M7 14h4" />,
   },
   {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { EstadoProduto } from "./actions";
 
 type Categoria = { id: string; nome: string };
@@ -69,37 +70,61 @@ export default function FormularioProduto({
   const [estado, formAction, pending] = useActionState(action, null);
   const [variantes, setVariantes] = useState<Variante[]>(produto?.variantes ?? [varianteVazia()]);
 
-  const [previewsPorVariante, setPreviewsPorVariante] = useState<Record<number, { url: string; nome: string }[]>>({});
+  // Pasta própria pro upload direto do navegador — as fotos vão pro Storage
+  // ANTES do submit do formulário, então não dependem do slug do produto
+  // (que só existe depois de criado).
+  const [pastaUpload] = useState(() => crypto.randomUUID());
+  const [enviandoPorVariante, setEnviandoPorVariante] = useState<Record<number, number>>({});
+  const [erroUploadPorVariante, setErroUploadPorVariante] = useState<Record<number, string | null>>({});
   const inputsRef = useRef<Record<number, HTMLInputElement | null>>({});
 
-  useEffect(() => {
-    return () => {
-      Object.values(previewsPorVariante)
-        .flat()
-        .forEach((p) => URL.revokeObjectURL(p.url));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /**
+   * Envia as fotos direto do navegador pro Supabase Storage (em vez de
+   * mandar os arquivos pela Server Action). O upload de arquivo binário
+   * através da Server Action quebra em produção com
+   * "Cannot set property socket of #<ComputeJsIncomingMessage>..." — uma
+   * incompatibilidade do runtime de hospedagem com corpos multipart
+   * grandes. Fazendo o upload aqui, a Server Action só recebe texto.
+   */
+  async function selecionarArquivos(indice: number, fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const arquivos = Array.from(fileList);
 
-  function selecionarArquivos(indice: number, fileList: FileList | null) {
-    (previewsPorVariante[indice] ?? []).forEach((p) => URL.revokeObjectURL(p.url));
+    setErroUploadPorVariante((atual) => ({ ...atual, [indice]: null }));
+    setEnviandoPorVariante((atual) => ({ ...atual, [indice]: (atual[indice] ?? 0) + arquivos.length }));
 
-    if (!fileList || fileList.length === 0) {
-      setPreviewsPorVariante((atual) => ({ ...atual, [indice]: [] }));
-      return;
+    const supabase = createClient();
+    let houveErro = false;
+
+    for (const arquivo of arquivos) {
+      const extensao = arquivo.name.split(".").pop();
+      const caminho = `${pastaUpload}/variante-${indice}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extensao}`;
+
+      const { error } = await supabase.storage.from("produtos").upload(caminho, arquivo, {
+        cacheControl: "31536000",
+        upsert: false,
+      });
+
+      if (error) {
+        console.error("[admin/produtos] falha no upload de imagem:", error.message);
+        houveErro = true;
+      } else {
+        const { data } = supabase.storage.from("produtos").getPublicUrl(caminho);
+        setVariantes((v) =>
+          v.map((item, i) => (i === indice ? { ...item, photos: [...item.photos, data.publicUrl] } : item))
+        );
+      }
+
+      setEnviandoPorVariante((atual) => ({ ...atual, [indice]: Math.max(0, (atual[indice] ?? 1) - 1) }));
     }
 
-    const novosPreviews = Array.from(fileList).map((file) => ({
-      url: URL.createObjectURL(file),
-      nome: file.name,
-    }));
+    if (houveErro) {
+      setErroUploadPorVariante((atual) => ({
+        ...atual,
+        [indice]: "Não foi possível enviar uma ou mais fotos. Tente novamente.",
+      }));
+    }
 
-    setPreviewsPorVariante((atual) => ({ ...atual, [indice]: novosPreviews }));
-  }
-
-  function limparSelecao(indice: number) {
-    (previewsPorVariante[indice] ?? []).forEach((p) => URL.revokeObjectURL(p.url));
-    setPreviewsPorVariante((atual) => ({ ...atual, [indice]: [] }));
     const input = inputsRef.current[indice];
     if (input) input.value = "";
   }
@@ -121,6 +146,8 @@ export default function FormularioProduto({
   function removerVariante(indice: number) {
     setVariantes((v) => v.filter((_, i) => i !== indice));
   }
+
+  const enviandoFotos = Object.values(enviandoPorVariante).some((n) => n > 0);
 
   return (
     <form action={formAction} className="flex flex-col gap-6 pb-24">
@@ -342,7 +369,6 @@ export default function FormularioProduto({
                       inputsRef.current[indice] = el;
                     }}
                     type="file"
-                    name={`varianteImagens_${indice}`}
                     accept="image/*"
                     multiple
                     className="sr-only"
@@ -350,39 +376,15 @@ export default function FormularioProduto({
                   />
                 </label>
 
-                {previewsPorVariante[indice]?.length > 0 && (
-                  <div className="rounded-lg bg-brand-light/50 p-2.5 flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-brand-dark">
-                        {previewsPorVariante[indice].length} foto
-                        {previewsPorVariante[indice].length > 1 ? "s" : ""} selecionada
-                        {previewsPorVariante[indice].length > 1 ? "s" : ""} — será{previewsPorVariante[indice].length > 1 ? "ão" : ""} enviada
-                        {previewsPorVariante[indice].length > 1 ? "s" : ""} ao salvar
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => limparSelecao(indice)}
-                        className="text-xs font-medium text-muted hover:text-red-500"
-                      >
-                        Cancelar seleção
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                      {previewsPorVariante[indice].map((p, i) => (
-                        <div key={p.url} className="flex flex-col items-center gap-1 w-16">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={p.url}
-                            alt={p.nome}
-                            className="h-16 w-16 rounded-lg border-2 border-brand object-cover"
-                          />
-                          <span className="text-[9px] text-muted truncate w-full text-center" title={p.nome}>
-                            {i + 1}. {p.nome}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {(enviandoPorVariante[indice] ?? 0) > 0 && (
+                  <p className="text-xs text-brand-dark flex items-center gap-1.5">
+                    <span className="h-3 w-3 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                    Enviando {enviandoPorVariante[indice]} foto{enviandoPorVariante[indice] > 1 ? "s" : ""}…
+                  </p>
+                )}
+
+                {erroUploadPorVariante[indice] && (
+                  <p className="text-xs text-red-600">{erroUploadPorVariante[indice]}</p>
                 )}
               </div>
             </div>
@@ -421,10 +423,10 @@ export default function FormularioProduto({
       <div className="fixed bottom-0 inset-x-0 sm:relative sm:inset-auto bg-surface sm:bg-transparent border-t sm:border-0 border-border p-4 sm:p-0 z-20">
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || enviandoFotos}
           className="w-full sm:w-auto inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-60 text-brand-foreground font-bold text-sm px-8 transition-colors"
         >
-          {pending ? "Salvando…" : produto ? "Salvar alterações" : "Cadastrar produto"}
+          {pending ? "Salvando…" : enviandoFotos ? "Enviando fotos…" : produto ? "Salvar alterações" : "Cadastrar produto"}
         </button>
       </div>
     </form>

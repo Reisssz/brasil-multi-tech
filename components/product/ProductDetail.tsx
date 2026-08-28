@@ -8,7 +8,6 @@ import { ProductGallery } from "./ProductGallery";
 import { StarRating } from "../ui/StarRating";
 import { Badge } from "../ui/Badge";
 import { PriceBlock } from "../ui/PriceBlock";
-import { ProductInstallments } from "./ProductInstallments";
 import { ProductCard } from "./ProductCard";
 import { useCart } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
@@ -240,8 +239,6 @@ export function ProductDetail({
           >
             {added ? "Adicionado ao carrinho ✓" : "Adicionar ao carrinho"}
           </button>
-
-          <ProductInstallments priceCents={activeVariant.priceCents} />
 
           <div className="flex flex-col gap-2 pt-2">
             <span className="text-sm font-semibold text-foreground">Destaques</span>

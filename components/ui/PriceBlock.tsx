@@ -1,4 +1,4 @@
-import { formatBRL, getBestInstallmentHeadline, getPixPriceCents, PRICING_RULES } from "@/lib/pricing";
+import { formatBRL, getPixPriceCents, PRICING_RULES } from "@/lib/pricing";
 
 export function PriceBlock({
   priceCents,
@@ -10,7 +10,6 @@ export function PriceBlock({
   size?: "sm" | "md" | "lg";
 }) {
   const pixPrice = getPixPriceCents(priceCents);
-  const installment = getBestInstallmentHeadline(priceCents);
   const priceTextSize = size === "lg" ? "text-3xl" : size === "sm" ? "text-lg" : "text-2xl";
 
   return (
@@ -22,14 +21,17 @@ export function PriceBlock({
         <span className={`font-display ${priceTextSize} font-bold tabular-nums text-foreground`}>
           {formatBRL(pixPrice)}
         </span>
-        <span className="inline-flex items-center rounded-full bg-success-light text-success text-xs font-semibold px-2 py-0.5">
-          {PRICING_RULES.pixDiscountPercent}% no Pix
-        </span>
+        {PRICING_RULES.pixDiscountPercent > 0 && (
+          <span className="inline-flex items-center rounded-full bg-success-light text-success text-xs font-semibold px-2 py-0.5">
+            {PRICING_RULES.pixDiscountPercent}% no Pix
+          </span>
+        )}
       </div>
-      <span className="text-xs text-muted tabular-nums">
-        ou {formatBRL(priceCents)} em até {installment.count}x de {formatBRL(installment.installmentCents)}
-        {installment.interestFree ? " sem juros" : ""}
-      </span>
+      {/* Parcelamento no cartão não é exibido aqui: quem processa é o
+          Mercado Pago, e as opções/juros reais só aparecem na tela de
+          pagamento dele — um número calculado por nós poderia não bater
+          com o que o cliente realmente vê lá. */}
+      <span className="text-xs text-muted">ou parcele no cartão de crédito</span>
     </div>
   );
 }

@@ -134,6 +134,12 @@ export type OpcaoFrete = {
   prazoDias: number;
 };
 
+export type ServicoDescartado = {
+  id: number;
+  nome: string;
+  motivo: string;
+};
+
 // Fallback conservador para itens sem dimensões cadastradas (celular embalado).
 const FALLBACK_DIMENSOES = { larguraCm: 15, alturaCm: 8, comprimentoCm: 20, pesoKg: 0.4 };
 
@@ -157,7 +163,10 @@ export function dimensoesDaVariante(v: {
 const SERVICO_PAC = 1;
 const SERVICO_SEDEX = 2;
 
-export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]): Promise<OpcaoFrete[]> {
+export async function calcularFrete(
+  cepDestino: string,
+  itens: ItemParaFrete[]
+): Promise<{ opcoes: OpcaoFrete[]; descartados: ServicoDescartado[] }> {
   const cepOrigem = cepOrigemValidado();
 
   const resultado = await melhorEnvioFetch<
@@ -211,14 +220,21 @@ export async function calcularFrete(cepDestino: string, itens: ItemParaFrete[]):
     throw new MelhorEnvioApiError(422, { message: motivos, errors: { servicos: [motivos] } });
   }
 
-  return validos.map((servico) => ({
-    id: servico.id,
-    nome: servico.name,
-    transportadora: servico.company.name,
-    precoOriginalCents: Math.round(Number(servico.price) * 100),
-    precoComDescontoCents: Math.round(Number(servico.custom_price) * 100),
-    prazoDias: servico.custom_delivery_time ?? servico.delivery_time,
-  }));
+  return {
+    opcoes: validos.map((servico) => ({
+      id: servico.id,
+      nome: servico.name,
+      transportadora: servico.company.name,
+      precoOriginalCents: Math.round(Number(servico.price) * 100),
+      precoComDescontoCents: Math.round(Number(servico.custom_price) * 100),
+      prazoDias: servico.custom_delivery_time ?? servico.delivery_time,
+    })),
+    descartados: comErro.map((servico) => ({
+      id: servico.id,
+      nome: servico.name,
+      motivo: servico.error!,
+    })),
+  };
 }
 
 export type DadosCompraEtiqueta = {

@@ -5,7 +5,7 @@ const steps = [
   {
     n: "1",
     title: "Escolha o produto",
-    text: "Navegue pelos smartphones, notebooks e acessórios com preço e parcelamento sempre visíveis.",
+    text: "Navegue pelos smartphones, notebooks e acessórios com o preço sempre visível.",
     icon: (
       <path
         d="M9 3h6M12 3v11M6 8l-3 8a2 2 0 0 0 2 3h14a2 2 0 0 0 2-3l-3-8H6Z"

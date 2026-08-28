@@ -28,7 +28,7 @@ export function ComboSuggestionCard({ sugestao }: { sugestao: SugestaoComboView 
         <ProductImage
           icon={sugestao.icone as ProductIconKey}
           photoSrc={sugestao.photoUrl ?? undefined}
-          tint="brand"
+          tint="white"
           className="aspect-square w-full"
         />
       </Link>

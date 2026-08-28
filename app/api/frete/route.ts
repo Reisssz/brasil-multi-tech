@@ -88,13 +88,22 @@ export async function POST(request: NextRequest) {
   });
 
   try {
-    const opcoes = await calcularFrete(cepLimpo, itens);
+    const { opcoes, descartados } = await calcularFrete(cepLimpo, itens);
     if (opcoes.length === 0) {
       return NextResponse.json(
         { error: "Nenhuma transportadora atende esse CEP no momento. Confira se o CEP está correto." },
         { status: 404 }
       );
     }
+
+    // PAC (id 1) costuma ser descartado pelos Correios quando a distância até
+    // o destino é curta demais para o serviço econômico — nesses casos só o
+    // SEDEX é oferecido. Sem esse aviso, o cliente só via o PAC sumir da
+    // lista sem entender o motivo.
+    const pacDescartado = descartados.find((s) => s.id === 1);
+    const avisoFrete = pacDescartado
+      ? `O PAC não está disponível para o endereço informado: a transportadora não atende envios econômicos para distâncias tão curtas. Para esse trecho, só o SEDEX é oferecido.`
+      : null;
 
     if (todosComFreteGratis) {
       // A política da loja é: frete grátis vale só pelo SEDEX — qualquer
@@ -112,17 +121,17 @@ export async function POST(request: NextRequest) {
           `[frete] frete grátis esperado mas ${SERVICO_GRATIS_NOME} não veio nas opções retornadas. Opções recebidas:`,
           opcoes.map((o) => o.nome).join(", ")
         );
-        return NextResponse.json({ opcoes, freteGratis: false });
+        return NextResponse.json({ opcoes, freteGratis: false, avisoFrete });
       }
 
       const opcoesComGratis = opcoes.map((o, i) => (i === indiceGratis ? { ...o, precoComDescontoCents: 0 } : o));
       // Opção grátis sempre primeiro na lista, pra já vir pré-selecionada.
       const ordenadas = [opcoesComGratis[indiceGratis], ...opcoesComGratis.filter((_, i) => i !== indiceGratis)];
 
-      return NextResponse.json({ opcoes: ordenadas, freteGratis: true });
+      return NextResponse.json({ opcoes: ordenadas, freteGratis: true, avisoFrete });
     }
 
-    return NextResponse.json({ opcoes });
+    return NextResponse.json({ opcoes, avisoFrete });
   } catch (erro) {
     if (erro instanceof MelhorEnvioApiError) {
       // CEP inválido de verdade (não localizado pelos Correios/base do

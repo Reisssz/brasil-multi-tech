@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL, getInstallmentOptions } from "@/lib/pricing";
+import { formatBRL } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { StarRating } from "../ui/StarRating";
@@ -22,10 +22,6 @@ export function ProductCard({ product }: { product: Product }) {
       )
     : 0;
 
-  const options = getInstallmentOptions(priceCents);
-  const interestFreeOption = [...options].reverse().find((o) => o.interestFree) ?? options[0];
-  const maxOption = options[options.length - 1];
-
   return (
     <Link
       href={`/produto/${product.slug}?variante=${mainVariant.id}`}
@@ -35,7 +31,7 @@ export function ProductCard({ product }: { product: Product }) {
         <ProductImage
           icon={mainVariant.images[0] as ProductIconKey}
           photoSrc={getMainPhoto(mainVariant)}
-          tint="brand"
+          tint="white"
           className="aspect-square w-full"
         />
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
@@ -63,19 +59,6 @@ export function ProductCard({ product }: { product: Product }) {
           <div className="flex items-baseline gap-1.5">
             <span className="font-display text-2xl font-bold tabular-nums text-foreground">{formatBRL(priceCents)}</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-[11px] text-muted tabular-nums">
-          <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="shrink-0 text-muted">
-            <rect x="1" y="1" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
-            <rect x="1" y="4" width="18" height="2.4" fill="currentColor" />
-          </svg>
-          <span>
-            Até {interestFreeOption.count}x de {formatBRL(interestFreeOption.installmentCents)} s/ juros
-            {maxOption.count > interestFreeOption.count && (
-              <> ou {maxOption.count}x de {formatBRL(maxOption.installmentCents)} c/ juros</>
-            )}
-          </span>
         </div>
 
         <span className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">

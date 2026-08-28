@@ -68,11 +68,3 @@ export interface CartItem {
   variantId: string;
   quantity: number;
 }
-
-export interface InstallmentOption {
-  count: number;
-  label: string;
-  interestFree: boolean;
-  installmentCents: number;
-  totalCents: number;
-}

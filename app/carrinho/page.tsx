@@ -115,7 +115,7 @@ export default function CartPage() {
             <span>Total no Pix</span>
             <span className="tabular-nums">{formatBRL(pixTotal)}</span>
           </div>
-          <span className="text-xs text-muted">ou {formatBRL(totalCents)} parcelado no cartão</span>
+          <span className="text-xs text-muted">ou parcele no cartão de crédito no pagamento</span>
           <Link
             href="/checkout"
             className="mt-2 inline-flex items-center justify-center rounded-full bg-brand hover:bg-brand-dark text-brand-foreground font-semibold h-11 text-sm transition-colors"

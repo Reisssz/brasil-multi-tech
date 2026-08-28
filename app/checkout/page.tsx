@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { calculateInstallment, formatBRL, getInstallmentOptions, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, getPixPriceCents } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
 
@@ -42,13 +42,13 @@ export default function CheckoutPage() {
   const [freteSelecionado, setFreteSelecionado] = useState<OpcaoFrete | null>(null);
   const [calculandoFrete, setCalculandoFrete] = useState(false);
   const [erroFrete, setErroFrete] = useState<string | null>(null);
+  const [avisoFrete, setAvisoFrete] = useState<string | null>(null);
   const [freteGratisAplicado, setFreteGratisAplicado] = useState(false);
 
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [cepEncontrado, setCepEncontrado] = useState<string | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
-  const [installments, setInstallments] = useState(1);
 
   const dadosValid = customerName.trim().length > 2 && email.includes("@") && cpf.trim().length >= 11;
   const enderecoValid =
@@ -60,9 +60,11 @@ export default function CheckoutPage() {
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
   const pixTotal = getPixPriceCents(totalCents) + freteCents;
-  const installmentOptions = getInstallmentOptions(totalCents);
-  const cardResult = calculateInstallment(totalCents, installments);
-  const cardTotal = cardResult.totalCents + freteCents;
+  // O total no cartão não é calculado aqui: quem processa é o Mercado Pago,
+  // e as parcelas/juros reais só são definidos na tela de pagamento dele —
+  // um valor calculado por nós poderia não bater com o que é cobrado de
+  // verdade.
+  const cardTotal = totalCents + freteCents;
 
   if (items.length === 0 && !submitting) {
     return (
@@ -110,6 +112,7 @@ export default function CheckoutPage() {
 
   async function calcularFrete() {
     setErroFrete(null);
+    setAvisoFrete(null);
     setCalculandoFrete(true);
     setOpcoesFrete([]);
     setFreteSelecionado(null);
@@ -129,6 +132,7 @@ export default function CheckoutPage() {
       }
 
       setOpcoesFrete(dados.opcoes);
+      setAvisoFrete(dados.avisoFrete ?? null);
       setFreteGratisAplicado(Boolean(dados.freteGratis));
       if (dados.freteGratis && dados.opcoes?.[0]) {
         setFreteSelecionado(dados.opcoes[0]);
@@ -156,7 +160,6 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items,
           paymentMethod,
-          installments: paymentMethod === "cartao" ? installments : undefined,
           customerName,
           cpf,
           phone,
@@ -330,6 +333,10 @@ export default function CheckoutPage() {
                           </p>
                         )}
 
+                        {avisoFrete && (
+                          <p className="rounded-lg bg-brand-light px-3 py-2 text-xs text-brand-dark">{avisoFrete}</p>
+                        )}
+
                         {opcoesFrete.length > 0 && (
                           <div className="flex flex-col gap-2">
                             {opcoesFrete.map((opcao) => (
@@ -405,24 +412,11 @@ export default function CheckoutPage() {
                           ))}
                         </div>
 
-                        {paymentMethod === "cartao" && (
-                          <select
-                            value={installments}
-                            onChange={(e) => setInstallments(Number(e.target.value))}
-                            className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand"
-                          >
-                            {installmentOptions.map((o) => (
-                              <option key={o.count} value={o.count}>
-                                {o.count}x de {formatBRL(o.installmentCents)}
-                                {o.interestFree ? " sem juros" : " com juros"}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-
                         <div className="rounded-lg bg-[#f7f8fa] px-4 py-3 text-xs text-muted">
                           Você será redirecionado ao <strong>Mercado Pago</strong> para concluir o pagamento com
                           segurança.
+                          {paymentMethod === "cartao" &&
+                            " As opções de parcelamento e os juros de cada cartão aparecem lá, na hora de pagar."}
                         </div>
 
                         {erroSubmit && (

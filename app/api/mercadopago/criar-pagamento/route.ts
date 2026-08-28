@@ -3,12 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
-import { getPixPriceCents, calculateInstallment, formatBRL } from "@/lib/pricing";
+import { getPixPriceCents, formatBRL } from "@/lib/pricing";
 
 interface CriarPagamentoBody {
   items: CartItem[];
   paymentMethod: "pix" | "boleto" | "cartao";
-  installments?: number;
   customerName: string;
   cpf: string;
   phone: string;
@@ -121,15 +120,16 @@ export async function POST(request: NextRequest) {
   );
   const freteCents = body.frete?.valorCentavos ?? 0;
 
+  // parcelas fica em 1 por padrão pro cartão: quem decide o número de
+  // parcelas e os juros de cada uma é o Mercado Pago, na tela de pagamento
+  // dele — não temos como saber isso aqui. O valor real (e o número de
+  // parcelas escolhido de fato) chega depois pelo webhook, direto da API
+  // de pagamentos do Mercado Pago, e atualiza este pedido.
   let totalCents = subtotalCents + freteCents;
-  let parcelas = 1;
+  const parcelas = 1;
 
   if (body.paymentMethod === "pix") {
     totalCents = getPixPriceCents(subtotalCents) + freteCents;
-  } else if (body.paymentMethod === "cartao") {
-    const resultado = calculateInstallment(subtotalCents, body.installments ?? 1);
-    totalCents = resultado.totalCents + freteCents;
-    parcelas = body.installments ?? 1;
   }
 
   const itemsSnapshot = itensResolvidos.map(({ item, variante }) => ({

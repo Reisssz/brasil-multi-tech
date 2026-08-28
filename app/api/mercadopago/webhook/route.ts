@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { mpPayment } from "@/lib/mercadopago/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enviarEmailPedidoConfirmado } from "@/lib/email/pedido-confirmado";
 
 /**
  * Confirma pagamentos de verdade. O Mercado Pago chama esta URL sempre que
@@ -32,6 +33,16 @@ export async function POST(request: NextRequest) {
     return numeros ? numeros[numeros.length - 1] : null;
   }
 
+  // O Mercado Pago manda notificações "merchant_order" além das de
+  // "payment" para o mesmo evento — elas não carregam data.id nem uma
+  // assinatura no mesmo formato, e não são usadas por este webhook (só
+  // confiamos no status lido direto da API via o id de PAGAMENTO). Sem
+  // esse corte, toda venda gerava um "data.id ausente" de ERROR no log
+  // que não indicava problema nenhum, só ruído.
+  if (bodyJson?.topic === "merchant_order") {
+    return NextResponse.json({ received: true, aviso: "notificação merchant_order ignorada (não usada)" });
+  }
+
   const dataId =
     request.nextUrl.searchParams.get("data.id") ??
     bodyJson?.data?.id ??
@@ -48,7 +59,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (!validarAssinatura(xSignature, xRequestId, dataId)) {
-    console.error("[mercadopago:webhook] assinatura inválida");
+    console.error(
+      "[mercadopago:webhook] assinatura inválida. dataId:",
+      dataId,
+      "x-signature:",
+      xSignature,
+      "x-request-id:",
+      xRequestId
+    );
     return NextResponse.json({ error: "assinatura inválida" }, { status: 401 });
   }
 
@@ -73,7 +91,7 @@ export async function POST(request: NextRequest) {
 
   const { data: pedidoAtual } = await supabase
     .from("orders")
-    .select("status, user_id, items")
+    .select("status, user_id, items, endereco_entrega")
     .eq("id", orderId)
     .single();
 
@@ -92,13 +110,30 @@ export async function POST(request: NextRequest) {
 
   const statusPedido = mapearStatusPedido(pagamento.status);
   if (statusPedido) {
-    await supabase.from("orders").update({ status: statusPedido }).eq("id", orderId);
+    // total e parcelas são atualizados aqui com o valor e o número de
+    // parcelas REAIS que o Mercado Pago processou — no cartão, o site não
+    // calcula juros (não temos acesso à taxa de cada emissor), então é só
+    // aqui, com o dado que vem direto da API de pagamentos, que o pedido
+    // fica alinhado com o que o cliente realmente pagou.
+    await supabase
+      .from("orders")
+      .update({
+        status: statusPedido,
+        ...(pagamento.transaction_amount != null ? { total: pagamento.transaction_amount } : {}),
+        ...(pagamento.installments != null ? { parcelas: pagamento.installments } : {}),
+      })
+      .eq("id", orderId);
 
     // Só baixa estoque na PRIMEIRA vez que o pedido vira "paid" — o Mercado
     // Pago pode reenviar o mesmo webhook várias vezes, e sem essa checagem
     // o estoque descontaria em dobro/triplo a cada reentrega.
     if (statusPedido === "paid" && pedidoAtual?.status !== "paid") {
-      const itens = (pedidoAtual?.items ?? []) as Array<{ variantId: string; quantidade: number }>;
+      const itens = (pedidoAtual?.items ?? []) as Array<{
+        variantId: string;
+        quantidade: number;
+        nome: string;
+        cor?: string | null;
+      }>;
       for (const item of itens) {
         await supabase.rpc("decrement_stock", { p_variant_id: item.variantId, p_qty: item.quantidade });
       }
@@ -108,6 +143,23 @@ export async function POST(request: NextRequest) {
         event_type: "order_paid",
         metadata: { pedidoId: orderId, valor: pagamento.transaction_amount },
       });
+
+      // E-mail de confirmação com o número do pedido e botão de rastreio.
+      // Best-effort: uma falha aqui não pode derrubar o webhook, o pedido
+      // já foi confirmado de verdade no banco.
+      if (pedidoAtual?.user_id) {
+        const { data: usuario } = await supabase.auth.admin.getUserById(pedidoAtual.user_id);
+        const enderecoEntrega = pedidoAtual.endereco_entrega as { nome?: string } | null;
+        if (usuario?.user?.email) {
+          await enviarEmailPedidoConfirmado({
+            paraEmail: usuario.user.email,
+            nomeCliente: enderecoEntrega?.nome ?? "cliente",
+            pedidoId: orderId,
+            itens,
+            totalCents: Math.round((pagamento.transaction_amount ?? 0) * 100),
+          });
+        }
+      }
     }
   }
 

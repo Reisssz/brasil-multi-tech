@@ -93,7 +93,7 @@ export function ComboKit({ produtoBase, sugestoes }: { produtoBase: ProdutoBase;
                 <ProductImage
                   icon={s.icone as ProductIconKey}
                   photoSrc={s.photoUrl ?? undefined}
-                  tint="brand"
+                  tint="white"
                   className="aspect-square w-full"
                 />
                 <div className="flex flex-col gap-0.5 p-2.5">

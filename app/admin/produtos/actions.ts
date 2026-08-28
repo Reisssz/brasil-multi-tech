@@ -24,41 +24,17 @@ async function verificarAdmin(supabase: Awaited<ReturnType<typeof createClient>>
   return perfil?.role === "admin";
 }
 
-async function fazerUploadImagens(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  caminhoBase: string,
-  arquivos: File[]
-): Promise<string[]> {
-  const urls: string[] = [];
-
-  for (const [indice, arquivo] of arquivos.entries()) {
-    if (!arquivo || arquivo.size === 0) continue;
-
-    const extensao = arquivo.name.split(".").pop();
-    const caminho = `${caminhoBase}/${Date.now()}-${indice}.${extensao}`;
-
-    const { error } = await supabase.storage.from("produtos").upload(caminho, arquivo, {
-      cacheControl: "31536000",
-      upsert: false,
-    });
-
-    if (error) {
-      console.error("[admin/produtos] falha no upload de imagem:", error.message);
-      continue;
-    }
-
-    const { data } = supabase.storage.from("produtos").getPublicUrl(caminho);
-    urls.push(data.publicUrl);
-  }
-
-  return urls;
-}
-
 /**
  * Extrai as variações do formulário, mantendo o ÍNDICE ORIGINAL de cada
  * linha (antes do filtro por preço válido) — é esse índice que liga cada
- * variação aos seus campos de foto (varianteImagens_N,
- * varianteFotosExistentes_N), então precisa sobreviver ao filtro.
+ * variação aos seus campos de foto (varianteFotosExistentes_N), então
+ * precisa sobreviver ao filtro.
+ *
+ * As fotos já chegam como URLs (varianteFotosExistentes_N) — o upload para
+ * o Storage acontece direto no navegador (ver FormularioProduto.tsx), não
+ * mais aqui. Enviar o arquivo binário pela Server Action quebrava em
+ * produção com um erro de runtime da hospedagem em corpos multipart
+ * grandes; como só texto passa por aqui agora, esse problema não existe.
  */
 function extrairVariantes(formData: FormData) {
   const cores = formData.getAll("varianteCor") as string[];
@@ -81,6 +57,7 @@ function extrairVariantes(formData: FormData) {
       compare_at_cents: precosComparacao[i] ? Math.round(Number(precosComparacao[i]) * 100) : null,
       stock: Number(estoques[i] ?? 0),
       sku: skus[i] || null,
+      photos: formData.getAll(`varianteFotosExistentes_${i}`) as string[],
     }))
     .filter((v) => v.price_cents > 0);
 }
@@ -131,18 +108,8 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
     return { erro: "Não foi possível salvar o produto." };
   }
 
-  // Cada variação recebe SÓ as fotos enviadas no seu próprio campo de
-  // upload (varianteImagens_<índice original da linha no formulário>).
-  const variantesComFotos = await Promise.all(
-    variantes.map(async (v) => {
-      const arquivos = formData.getAll(`varianteImagens_${v.indiceOriginal}`) as File[];
-      const photos = arquivos.length > 0 ? await fazerUploadImagens(supabase, `${slug}/variante-${v.indiceOriginal}`, arquivos) : [];
-      return { ...v, photos };
-    })
-  );
-
   const { error: erroVariantes } = await supabase.from("product_variants").insert(
-    variantesComFotos.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
+    variantes.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
       ...v,
       product_id: produto.id,
       sku: v.sku || `v-${slug}-${Math.random().toString(36).slice(2, 8)}`,
@@ -213,28 +180,11 @@ export async function atualizarProduto(
   // viva à variante.
   const variantes = extrairVariantes(formData);
 
-  const variantesComFotos = await Promise.all(
-    variantes.map(async (v) => {
-      // Fotos que já existiam nessa linha e o admin NÃO removeu (o
-      // formulário só reenvia as que sobraram depois de clicar em remover).
-      const fotosExistentes = formData.getAll(`varianteFotosExistentes_${v.indiceOriginal}`) as string[];
-      const arquivosNovos = (formData.getAll(`varianteImagens_${v.indiceOriginal}`) as File[]).filter(
-        (f) => f && f.size > 0
-      );
-      const novasUrls =
-        arquivosNovos.length > 0
-          ? await fazerUploadImagens(supabase, `${produtoAtual?.slug ?? produtoId}/variante-${v.indiceOriginal}`, arquivosNovos)
-          : [];
-
-      return { ...v, photos: [...fotosExistentes, ...novasUrls] };
-    })
-  );
-
-  if (variantesComFotos.length > 0) {
+  if (variantes.length > 0) {
     await supabase.from("product_variants").delete().eq("product_id", produtoId);
 
     const { error: erroVariantes } = await supabase.from("product_variants").insert(
-      variantesComFotos.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
+      variantes.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
         ...v,
         product_id: produtoId,
         sku: v.sku || `v-${produtoAtual?.slug ?? produtoId}-${Math.random().toString(36).slice(2, 8)}`,
