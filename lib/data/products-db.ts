@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Product, ProductCategory, ProductCategorySlug, ProductCondition, ProductVariant } from "@/lib/types";
+import type { PlanoParcelamento } from "@/lib/pricing";
 import type { ProductIconKey } from "@/components/ui/ProductImage";
 
 const ICONE_POR_CATEGORIA: Record<string, ProductIconKey> = {
@@ -62,15 +63,45 @@ type LinhaProduto = {
   category_id: string | null;
   categories: { slug: string; nome: string } | null;
   product_variants: LinhaVariante[];
+  em_destaque: boolean;
+  parcelamento_habilitado: boolean;
+  pix_desconto_percent: number | null;
 };
 
 const SELECT_PRODUTO_COMPLETO = `
   id, slug, brand, name, tagline, description, highlights, warranty_months,
-  free_shipping, ativo, category_id,
+  free_shipping, ativo, category_id, em_destaque, parcelamento_habilitado, pix_desconto_percent,
   categories ( slug, nome ),
   product_variants ( id, color, color_hex, storage_gb, condition, price_cents,
     compare_at_cents, stock, photos, sku, weight_grams, width_cm, height_cm, length_cm )
 `;
+
+const PLANO_PADRAO: PlanoParcelamento = { maxInstallments: 1 };
+
+/**
+ * Config global de parcelamento (site_settings, linha única) — quantas
+ * parcelas a loja oferece, sempre sem juros pro cliente (modelo "Parcelado
+ * Vendedor" do Mercado Pago — ver /admin/configuracoes pras taxas reais
+ * que a loja paga por isso). Usado só quando um produto tem
+ * parcelamento_habilitado = true.
+ */
+export async function getSiteSettingsDb(): Promise<PlanoParcelamento> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("parcelamento_max_installments")
+    .eq("id", true)
+    .single();
+
+  if (error || !data) {
+    console.error("[products-db] getSiteSettingsDb:", error?.message);
+    return PLANO_PADRAO;
+  }
+
+  return {
+    maxInstallments: data.parcelamento_max_installments,
+  };
+}
 
 function mapearVariante(v: LinhaVariante): ProductVariant {
   return {
@@ -91,7 +122,7 @@ function mapearVariante(v: LinhaVariante): ProductVariant {
   };
 }
 
-function mapearProduto(row: LinhaProduto): Product {
+function mapearProduto(row: LinhaProduto, plano: PlanoParcelamento): Product {
   const categorySlug = (row.categories?.slug ?? "acessorios") as ProductCategorySlug;
   const icone = ICONE_POR_CATEGORIA[categorySlug] ?? "accessory";
 
@@ -117,6 +148,10 @@ function mapearProduto(row: LinhaProduto): Product {
     reviewCount: 0,
     variants: variants.length > 0 ? variants : [placeholderVariant()],
     reviews: [],
+    emDestaque: row.em_destaque,
+    parcelamentoHabilitado: row.parcelamento_habilitado,
+    pixDescontoPercent: row.pix_desconto_percent ?? undefined,
+    planoParcelamento: plano,
   };
 }
 
@@ -135,12 +170,27 @@ function placeholderVariant(): ProductVariant {
   };
 }
 
-export async function getFeaturedProductsDb(limit = 8): Promise<Product[]> {
+/**
+ * Produtos pra vitrine de destaque, opcionalmente restrita a uma categoria
+ * (pra montar prateleiras tipo "Destaques em Notebooks"). Prioriza os
+ * marcados manualmente como em_destaque pelo admin; se não houver o
+ * suficiente ainda, completa com os mais recentes pra vitrine nunca ficar
+ * vazia enquanto ninguém marcou nada.
+ */
+export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCategorySlug): Promise<Product[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(SELECT_PRODUTO_COMPLETO)
-    .eq("ativo", true)
+  const plano = await getSiteSettingsDb();
+
+  let query = supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
+
+  if (categorySlug) {
+    const { data: categoria } = await supabase.from("categories").select("id").eq("slug", categorySlug).single();
+    if (!categoria) return [];
+    query = query.eq("category_id", categoria.id);
+  }
+
+  const { data: destacados, error } = await query
+    .eq("em_destaque", true)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -148,11 +198,30 @@ export async function getFeaturedProductsDb(limit = 8): Promise<Product[]> {
     console.error("[products-db] getFeaturedProductsDb:", error.message);
     return [];
   }
-  return (data as unknown as LinhaProduto[]).map(mapearProduto);
+
+  const produtos = (destacados as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+
+  if (produtos.length >= limit) return produtos;
+
+  let complemento = supabase
+    .from("products")
+    .select(SELECT_PRODUTO_COMPLETO)
+    .eq("ativo", true)
+    .not("id", "in", `(${(produtos.map((p) => p.id).length > 0 ? produtos.map((p) => p.id) : ["00000000-0000-0000-0000-000000000000"]).join(",")})`);
+
+  if (categorySlug) {
+    const { data: categoria } = await supabase.from("categories").select("id").eq("slug", categorySlug).single();
+    if (categoria) complemento = complemento.eq("category_id", categoria.id);
+  }
+
+  const { data: recentes } = await complemento.order("created_at", { ascending: false }).limit(limit - produtos.length);
+
+  return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r, plano))];
 }
 
 export async function getProductBySlugForMetadataDb(slug: string): Promise<Product | null> {
   const supabase = createAdminClient();
+  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -161,11 +230,12 @@ export async function getProductBySlugForMetadataDb(slug: string): Promise<Produ
     .single();
 
   if (error || !data) return null;
-  return mapearProduto(data as unknown as LinhaProduto);
+  return mapearProduto(data as unknown as LinhaProduto, plano);
 }
 
 export async function getProductBySlugDb(slug: string): Promise<Product | null> {
   const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -174,11 +244,12 @@ export async function getProductBySlugDb(slug: string): Promise<Product | null> 
     .single();
 
   if (error || !data) return null;
-  return mapearProduto(data as unknown as LinhaProduto);
+  return mapearProduto(data as unknown as LinhaProduto, plano);
 }
 
 export async function getProductsByCategoryDb(categorySlug: string): Promise<Product[]> {
   const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
 
   let query = supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
 
@@ -194,7 +265,7 @@ export async function getProductsByCategoryDb(categorySlug: string): Promise<Pro
     return [];
   }
 
-  const produtos = (data as unknown as LinhaProduto[]).map(mapearProduto);
+  const produtos = (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
 
   if (categorySlug === "ofertas") {
     return produtos.filter((p) => p.variants.some((v) => v.compareAtCents && v.compareAtCents > v.priceCents));
@@ -204,6 +275,7 @@ export async function getProductsByCategoryDb(categorySlug: string): Promise<Pro
 
 export async function getRelatedProductsDb(product: Product, limit = 4): Promise<Product[]> {
   const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -212,7 +284,7 @@ export async function getRelatedProductsDb(product: Product, limit = 4): Promise
     .limit(limit);
 
   if (error) return [];
-  return (data as unknown as LinhaProduto[]).map(mapearProduto);
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
 }
 
 export type SugestaoCombo = {
@@ -406,11 +478,12 @@ export async function getCategoryPhotoDb(categorySlug: string): Promise<string |
 }
 export async function getAllActiveProductsForCache(): Promise<Product[]> {
   const supabase = createAdminClient();
+  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
 
   if (error) {
     console.error("[products-db] getAllActiveProductsForCache:", error.message);
     return [];
   }
-  return (data as unknown as LinhaProduto[]).map(mapearProduto);
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
 }

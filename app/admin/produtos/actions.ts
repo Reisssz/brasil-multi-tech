@@ -75,6 +75,10 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
     .filter(Boolean);
   const warrantyMonths = Number(formData.get("warrantyMonths") ?? 12);
   const freeShipping = formData.get("freeShipping") === "on";
+  const emDestaque = formData.get("emDestaque") === "on";
+  const parcelamentoHabilitado = formData.get("parcelamentoHabilitado") === "on";
+  const pixDescontoPercentBruto = String(formData.get("pixDescontoPercent") ?? "").trim();
+  const pixDescontoPercent = pixDescontoPercentBruto ? Number(pixDescontoPercentBruto) : null;
 
   const variantes = extrairVariantes(formData);
 
@@ -96,6 +100,9 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
       highlights,
       warranty_months: warrantyMonths,
       free_shipping: freeShipping,
+      em_destaque: emDestaque,
+      parcelamento_habilitado: parcelamentoHabilitado,
+      pix_desconto_percent: pixDescontoPercent,
       ativo: true,
     })
     .select("id")
@@ -144,6 +151,10 @@ export async function atualizarProduto(
   const warrantyMonths = Number(formData.get("warrantyMonths") ?? 12);
   const freeShipping = formData.get("freeShipping") === "on";
   const ativo = formData.get("ativo") === "on";
+  const emDestaque = formData.get("emDestaque") === "on";
+  const parcelamentoHabilitado = formData.get("parcelamentoHabilitado") === "on";
+  const pixDescontoPercentBruto = String(formData.get("pixDescontoPercent") ?? "").trim();
+  const pixDescontoPercent = pixDescontoPercentBruto ? Number(pixDescontoPercentBruto) : null;
 
   if (!name || !categoryId) {
     return { erro: "Preencha nome e categoria." };
@@ -163,6 +174,9 @@ export async function atualizarProduto(
       warranty_months: warrantyMonths,
       free_shipping: freeShipping,
       ativo,
+      em_destaque: emDestaque,
+      parcelamento_habilitado: parcelamentoHabilitado,
+      pix_desconto_percent: pixDescontoPercent,
       updated_at: new Date().toISOString(),
     })
     .eq("id", produtoId);

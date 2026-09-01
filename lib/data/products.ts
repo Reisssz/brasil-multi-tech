@@ -1,5 +1,8 @@
 import { Product } from "../types";
 
+/** Este catálogo é só mock (usado hoje só pelas avaliações de exemplo em TrustSection) — o catálogo real vem de lib/data/products-db.ts. */
+type ProdutoMock = Omit<Product, "emDestaque" | "parcelamentoHabilitado" | "planoParcelamento">;
+
 function makeReviews(seed: string): Product["reviews"] {
   const pool = [
     {
@@ -35,7 +38,7 @@ function makeReviews(seed: string): Product["reviews"] {
   }));
 }
 
-export const products: Product[] = [
+const produtosMock: ProdutoMock[] = [
   {
     id: "p-iphone-11",
     slug: "iphone-11-seminovo",
@@ -764,6 +767,13 @@ export const products: Product[] = [
     reviews: makeReviews("capinha-magsafe"),
   },
 ];
+
+export const products: Product[] = produtosMock.map((p) => ({
+  ...p,
+  emDestaque: false,
+  parcelamentoHabilitado: false,
+  planoParcelamento: { maxInstallments: 1 },
+}));
 
 export function getProductBySlug(slug: string) {
   return products.find((p) => p.slug === slug);

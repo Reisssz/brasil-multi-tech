@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
-import { formatBRL } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento } from "@/lib/pricing";
+import { getSiteSettingsDb } from "@/lib/data/products-db";
 
 interface CriarPagamentoBody {
   items: CartItem[];
   paymentMethod: "pix" | "boleto" | "cartao";
+  /** Número de parcelas escolhido no checkout (só relevante quando paymentMethod === "cartao"). */
+  installments?: number;
   customerName: string;
   cpf: string;
   phone: string;
@@ -120,14 +123,26 @@ export async function POST(request: NextRequest) {
   );
   const freteCents = body.frete?.valorCentavos ?? 0;
 
-  // Mesmo total pra qualquer forma de pagamento — sem desconto no Pix.
-  // parcelas fica em 1 por padrão pro cartão: quem decide o número de
-  // parcelas e os juros de cada uma é o Mercado Pago, na tela de pagamento
-  // dele — não temos como saber isso aqui. O valor real (e o número de
-  // parcelas escolhido de fato) chega depois pelo webhook, direto da API
-  // de pagamentos do Mercado Pago, e atualiza este pedido.
-  const totalCents = subtotalCents + freteCents;
-  const parcelas = 1;
+  // Mesmo total pra qualquer forma de pagamento — sem desconto no Pix. Pro
+  // cartão, o número de parcelas é o que o cliente escolheu no checkout,
+  // calculado com o plano REAL cadastrado pelo admin (copiado do Mercado
+  // Pago) — mas o valor final de verdade quem decide é o Mercado Pago na
+  // tela dele, então isso aqui é só a estimativa registrada no pedido; o
+  // webhook corrige total e parcelas com o dado real assim que o pagamento
+  // é confirmado.
+  let totalCents = subtotalCents + freteCents;
+  let parcelas = 1;
+  let planoParcelamento: Awaited<ReturnType<typeof getSiteSettingsDb>> | null = null;
+
+  if (body.paymentMethod === "cartao") {
+    planoParcelamento = await getSiteSettingsDb();
+    const opcoes = calcularParcelamento(subtotalCents, planoParcelamento);
+    const escolhida = opcoes.find((o) => o.count === (body.installments ?? 1)) ?? opcoes[0];
+    if (escolhida) {
+      totalCents = escolhida.totalCents + freteCents;
+      parcelas = escolhida.count;
+    }
+  }
 
   const itemsSnapshot = itensResolvidos.map(({ item, variante }) => ({
     productId: variante!.product_id,
@@ -217,6 +232,19 @@ export async function POST(request: NextRequest) {
       auto_return: "approved",
       notification_url: `${siteUrl}/api/mercadopago/webhook`,
       statement_descriptor: "BRASILMULTITECH",
+      // Pré-seleciona na tela do Mercado Pago a qtd de parcelas que o
+      // cliente já escolheu no nosso checkout — ele só confirma lá, sem
+      // digitar de novo. O valor final de cada parcela quem calcula é o
+      // Mercado Pago (pode variar por bandeira/emissor); isso aqui só
+      // define qual opção já vem marcada.
+      ...(planoParcelamento
+        ? {
+            payment_methods: {
+              installments: planoParcelamento.maxInstallments,
+              default_installments: parcelas,
+            },
+          }
+        : {}),
     },
   });
 

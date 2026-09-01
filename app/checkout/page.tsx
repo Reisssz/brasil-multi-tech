@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { formatBRL } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento, type PlanoParcelamento } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
+import { createClient } from "@/lib/supabase/client";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
+
+const PLANO_PADRAO: PlanoParcelamento = { maxInstallments: 1 };
 
 type Step = 1 | 2 | 3;
 
@@ -49,6 +52,21 @@ export default function CheckoutPage() {
   const [cepEncontrado, setCepEncontrado] = useState<string | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [installments, setInstallments] = useState(1);
+  const [planoParcelamento, setPlanoParcelamento] = useState<PlanoParcelamento>(PLANO_PADRAO);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("site_settings")
+      .select("parcelamento_max_installments")
+      .eq("id", true)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        setPlanoParcelamento({ maxInstallments: data.parcelamento_max_installments });
+      });
+  }, []);
 
   const dadosValid = customerName.trim().length > 2 && email.includes("@") && cpf.trim().length >= 11;
   const enderecoValid =
@@ -59,10 +77,16 @@ export default function CheckoutPage() {
     stateUf.trim().length === 2;
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
-  // Mesmo total pra qualquer forma de pagamento — sem desconto no Pix, e o
-  // cartão não é calculado aqui: quem processa é o Mercado Pago, e as
-  // parcelas/juros reais só são definidos na tela de pagamento dele.
-  const totalFinal = totalCents + freteCents;
+  // Opções calculadas com o plano REAL cadastrado pelo admin em
+  // /admin/configuracoes (copiado da própria conta Mercado Pago da loja) —
+  // o valor exato de cada parcela ainda é confirmado na tela do Mercado
+  // Pago (pode variar um pouco por bandeira/emissor), mas a prévia aqui já
+  // reflete a taxa real da loja, não um número inventado.
+  const opcoesParcelamento = calcularParcelamento(totalCents, planoParcelamento);
+  const parcelaEscolhida = opcoesParcelamento.find((o) => o.count === installments) ?? opcoesParcelamento[0];
+  const cardTotal = (parcelaEscolhida?.totalCents ?? totalCents) + freteCents;
+
+  const totalFinal = paymentMethod === "cartao" ? cardTotal : totalCents + freteCents;
 
   if (items.length === 0 && !submitting) {
     return (
@@ -158,6 +182,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items,
           paymentMethod,
+          installments: paymentMethod === "cartao" ? installments : undefined,
           customerName,
           cpf,
           phone,
@@ -410,11 +435,29 @@ export default function CheckoutPage() {
                           ))}
                         </div>
 
+                        {paymentMethod === "cartao" && (
+                          <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
+                            Parcelas
+                            <select
+                              value={installments}
+                              onChange={(e) => setInstallments(Number(e.target.value))}
+                              className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand bg-white"
+                            >
+                              {opcoesParcelamento.map((o) => (
+                                <option key={o.count} value={o.count}>
+                                  {o.count}x de {formatBRL(o.installmentCents)}
+                                  {o.interestFree ? " sem juros" : " com juros"}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+
                         <div className="rounded-lg bg-[#f7f8fa] px-4 py-3 text-xs text-muted">
                           Você será redirecionado ao <strong>Mercado Pago</strong> para concluir o pagamento com
                           segurança.
                           {paymentMethod === "cartao" &&
-                            " As opções de parcelamento e os juros de cada cartão aparecem lá, na hora de pagar."}
+                            " Essa parcela já vem selecionada por lá — o valor final é confirmado na hora, e pode variar um pouco conforme a bandeira do seu cartão."}
                         </div>
 
                         {erroSubmit && (

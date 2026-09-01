@@ -6,7 +6,7 @@ export function TopBar() {
     <div className="hidden sm:block bg-ink-2 text-ink-muted text-xs">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 h-9 flex items-center justify-between">
         <span className="font-medium">
-          Especialistas em smartphones com garantia — aprovação facilitada para negativados!
+          Especialistas em smartphones com garantia — direto de Belém - PA para todo o Brasil!
         </span>
         <div className="flex items-center gap-5">
           <Link href="/ajuda" className="flex items-center gap-1.5 hover:text-white transition-colors">

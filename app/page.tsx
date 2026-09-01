@@ -4,6 +4,7 @@ import { TrustBar } from "@/components/layout/TrustBar";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { CategoryShowcase } from "@/components/home/CategoryShowcase";
 import { FeaturedOffers } from "@/components/home/FeaturedOffers";
+import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { PromoBannerStrip } from "@/components/home/PromoBannerStrip";
 import { TrustSection } from "@/components/home/TrustSection";
 
@@ -12,8 +13,9 @@ export default function Home() {
     <>
       <Hero />
       <QuickTiles />
-      <CategoryShowcase />
       <FeaturedOffers />
+      <PromoCarousel />
+      <CategoryShowcase />
       <PromoBannerStrip />
       <TrustSection />
       <TrustBar />

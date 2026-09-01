@@ -28,6 +28,9 @@ type ProdutoExistente = {
   warrantyMonths: number;
   freeShipping: boolean;
   ativo: boolean;
+  emDestaque: boolean;
+  parcelamentoHabilitado: boolean;
+  pixDescontoPercent: number | null;
   variantes: Variante[];
 };
 
@@ -399,6 +402,43 @@ export default function FormularioProduto({
             <ToggleField label="Frete grátis" name="freeShipping" defaultChecked={produto?.freeShipping ?? true} />
             {produto && <ToggleField label="Produto ativo (visível na loja)" name="ativo" defaultChecked={produto.ativo} />}
           </div>
+        </div>
+      </Secao>
+
+      <Secao titulo="Destaque e formas de pagamento">
+        <div className="flex flex-col gap-2">
+          <ToggleField label="Produto em destaque" name="emDestaque" defaultChecked={produto?.emDestaque ?? false} />
+          <p className="text-xs text-muted -mt-1.5">
+            Aparece nas vitrines de destaque da home (a categoria do produto já separa &ldquo;Destaques em
+            Notebooks&rdquo;, &ldquo;Destaques em Celulares&rdquo; etc — não precisa marcar nada além disso).
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <ToggleField
+            label="Habilitar parcelamento no cartão"
+            name="parcelamentoHabilitado"
+            defaultChecked={produto?.parcelamentoHabilitado ?? false}
+          />
+          <p className="text-xs text-muted -mt-1.5">
+            Mostra a prévia de parcelas no card e na página do produto, usando o plano configurado em{" "}
+            <a href="/admin/configuracoes" className="text-brand-dark hover:underline">
+              Configurações de parcelamento
+            </a>{" "}
+            (copiado do que o Mercado Pago disponibiliza pra sua conta).
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Campo
+            label="Desconto no Pix — % (opcional)"
+            name="pixDescontoPercent"
+            type="number"
+            min={1}
+            max={100}
+            placeholder="Deixe em branco se não tiver desconto"
+            defaultValue={produto?.pixDescontoPercent ?? undefined}
+          />
         </div>
       </Secao>
 

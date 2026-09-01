@@ -112,7 +112,13 @@ export function ProductDetail({
             {product.freeShipping && <Badge tone="brand">Frete grátis</Badge>}
           </div>
 
-          <PriceBlock priceCents={activeVariant.priceCents} size="lg" />
+          <PriceBlock
+            priceCents={activeVariant.priceCents}
+            size="lg"
+            parcelamentoHabilitado={product.parcelamentoHabilitado}
+            planoParcelamento={product.planoParcelamento}
+            pixDescontoPercent={product.pixDescontoPercent}
+          />
 
           {colors.length > 1 && (
             <div className="flex flex-col gap-2">

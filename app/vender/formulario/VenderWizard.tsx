@@ -73,7 +73,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const [includesBox, setIncludesBox] = useState(false);
   const [includesCharger, setIncludesCharger] = useState(false);
 
-  const [offerType, setOfferType] = useState<OfferType>("agora");
+  // Fixo: só existe a modalidade "Venda Agora" — mantido como constante em
+  // vez de removido pra não mexer no formato salvo em trade_in_requests
+  // (coluna offer_type) nem no restante do fluxo (contrato, admin).
+  const offerType: OfferType = "agora";
 
   const [contactName, setContactName] = useState(perfilNome ?? "");
   const [contactPhone, setContactPhone] = useState(perfilTelefone ?? "");
@@ -120,7 +123,6 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       if (typeof draft.pecaNaoGenuina === "boolean") setPecaNaoGenuina(draft.pecaNaoGenuina);
       if (typeof draft.includesBox === "boolean") setIncludesBox(draft.includesBox);
       if (typeof draft.includesCharger === "boolean") setIncludesCharger(draft.includesCharger);
-      if (draft.offerType) setOfferType(draft.offerType);
       if (draft.contactName) setContactName(draft.contactName);
       if (draft.contactPhone) setContactPhone(draft.contactPhone);
       if (draft.contactEmail) setContactEmail(draft.contactEmail);
@@ -489,28 +491,16 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
           <div className="rounded-2xl border border-border bg-surface p-6">
             {!row && (
               <>
-                <h2 className="font-bold text-foreground text-lg mb-4">Escolha como vender seu aparelho</h2>
-                <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                <h2 className="font-bold text-foreground text-lg mb-1">Sua oferta</h2>
+                <p className="text-sm text-muted mb-4">Todas as vendas são seguras e garantidas pela Brasil Multi Tech.</p>
+                <div className="max-w-sm mb-6">
                   <OfferCard
                     titulo="Venda Agora"
                     valorCents={ofertas.agoraCents}
-                    selecionado={offerType === "agora"}
-                    onSelecionar={() => setOfferType("agora")}
                     beneficios={[
                       "Avaliação confirmada assim que recebemos as informações",
                       "Pagamento em até 10 dias corridos",
                       "Compramos em praticamente qualquer condição",
-                    ]}
-                  />
-                  <OfferCard
-                    titulo="Venda Mais Valor"
-                    valorCents={ofertas.maisValorCents}
-                    selecionado={offerType === "mais_valor"}
-                    onSelecionar={() => setOfferType("mais_valor")}
-                    beneficios={[
-                      "Receba no mínimo 20% a mais",
-                      "Pagamento após a revenda do aparelho, em até 25 dias corridos",
-                      "Nós cuidamos do reparo antes de revender",
                     ]}
                   />
                 </div>
@@ -561,8 +551,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                 Pelo presente termo, eu declaro ser o legítimo proprietário do aparelho{" "}
                 <strong>{row.brand} {row.model}{row.storage_gb ? ` ${row.storage_gb}GB` : ""}{row.color ? `, cor ${row.color}` : ""}</strong>,
                 e concordo em vendê-lo à Brasil Multi Tech pelo valor de{" "}
-                <strong>{formatBRL(row.final_value_cents ?? row.estimated_value_cents ?? 0)}</strong>, na modalidade{" "}
-                <strong>{row.offer_type === "mais_valor" ? "Venda Mais Valor" : "Venda Agora"}</strong>.
+                <strong>{formatBRL(row.final_value_cents ?? row.estimated_value_cents ?? 0)}</strong>, com pagamento
+                em até 10 dias corridos.
               </p>
               <p className="mb-2">
                 Declaro que as informações fornecidas sobre o estado do aparelho são verdadeiras, e estou ciente de que
@@ -746,15 +736,15 @@ function DeviceSummaryCard({
 }
 
 function OfferCard({
-  titulo, valorCents, selecionado, onSelecionar, beneficios,
+  titulo, valorCents, beneficios,
 }: {
-  titulo: string; valorCents: number; selecionado: boolean; onSelecionar: () => void; beneficios: string[];
+  titulo: string; valorCents: number; beneficios: string[];
 }) {
   return (
-    <div className={`rounded-2xl border-2 p-5 flex flex-col ${selecionado ? "border-brand" : "border-border"}`}>
+    <div className="rounded-2xl border-2 border-brand p-5 flex flex-col">
       <span className="font-bold text-brand-dark text-sm mb-1">{titulo}</span>
       <span className="font-display text-2xl font-bold text-foreground mb-3">{formatBRL(valorCents)}</span>
-      <ul className="flex flex-col gap-2 mb-4 flex-1">
+      <ul className="flex flex-col gap-2">
         {beneficios.map((b) => (
           <li key={b} className="flex items-start gap-2 text-xs text-muted">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0 text-brand-dark">
@@ -764,14 +754,6 @@ function OfferCard({
           </li>
         ))}
       </ul>
-      <button
-        onClick={onSelecionar}
-        className={`h-10 rounded-full border text-xs font-bold uppercase tracking-wide transition-colors ${
-          selecionado ? "border-brand bg-brand text-brand-foreground" : "border-border text-foreground hover:bg-[#f7f8fa]"
-        }`}
-      >
-        {selecionado ? "Selecionado" : "Selecionar"}
-      </button>
     </div>
   );
 }

@@ -16,8 +16,7 @@ export default function AboutPage() {
             A Brasil Multi Tech é uma loja especializada em smartphones e tecnologia, com {SITE.yearsInBusiness}{" "}
             anos de mercado e loja física em Belém - PA. Trabalhamos com iPhone, Xiaomi, Samsung, Realme,
             Motorola, smartwatches, fones Bluetooth e acessórios premium, sempre com preços acessíveis,
-            garantia de verdade e facilidade no pagamento — inclusive para quem está negativado ou não tem
-            cartão de crédito.
+            garantia de verdade e facilidade no pagamento via Pix, boleto ou cartão de crédito.
           </p>
         </div>
 
@@ -27,7 +26,6 @@ export default function AboutPage() {
             {[
               "Smartphones com garantia",
               "Parcelamento facilitado",
-              "Aprovação para negativados",
               "Acessórios premium com qualidade e garantia",
               "Assistência técnica (troca de tela e bateria)",
               "Atendimento rápido e personalizado",

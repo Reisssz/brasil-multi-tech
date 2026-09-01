@@ -12,6 +12,7 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
       .from("products")
       .select(
         `id, name, brand, category_id, tagline, description, highlights, warranty_months, free_shipping, ativo,
+         em_destaque, parcelamento_habilitado, pix_desconto_percent,
          product_variants ( color, color_hex, storage_gb, condition, price_cents, compare_at_cents, stock, sku, photos )`
       )
       .eq("id", id)
@@ -40,6 +41,9 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
           warrantyMonths: produto.warranty_months,
           freeShipping: produto.free_shipping,
           ativo: produto.ativo,
+          emDestaque: produto.em_destaque,
+          parcelamentoHabilitado: produto.parcelamento_habilitado,
+          pixDescontoPercent: produto.pix_desconto_percent,
           variantes: produto.product_variants.map((v) => ({
             color: v.color ?? "",
             colorHex: v.color_hex,

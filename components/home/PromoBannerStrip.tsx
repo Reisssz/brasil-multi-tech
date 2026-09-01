@@ -4,8 +4,8 @@ import { Reveal } from "../ui/Reveal";
 
 const banners = [
   {
-    title: "Até 30% OFF",
-    subtitle: "em seminovos selecionados",
+    title: "Seminovos revisados",
+    subtitle: "testados em laudo de 40 pontos",
     href: "/categoria/ofertas",
     photo: "/products/iphone13-midnight-1.webp",
   },
@@ -22,9 +22,9 @@ const banners = [
     photo: "/products/dell-i3-seminovo-1.webp",
   },
   {
-    title: "Negativado?",
-    subtitle: "aprovação facilitada, sem burocracia",
-    href: "/contato",
+    title: "Venda seu aparelho",
+    subtitle: "transforme o celular parado em dinheiro",
+    href: "/vender",
     photo: "/products/iphone11-white-1.webp",
   },
 ];

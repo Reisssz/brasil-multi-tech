@@ -12,7 +12,7 @@ const items = [
     icon: <path d="M3 7h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z M3 10h18 M7 14h4" />,
   },
   {
-    label: "Aprovação facilitada para negativados",
+    label: "Garantia em todos os produtos",
     icon: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z M9.5 12l1.8 1.8L15 10" />,
   },
   {

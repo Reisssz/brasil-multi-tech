@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, getPixPriceCents } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { StarRating } from "../ui/StarRating";
@@ -12,6 +12,10 @@ export function ProductCard({ product }: { product: Product }) {
   // condition badge and the price shown never contradict each other.
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);
   const priceCents = getMinPriceCents(product);
+  const pixPriceCents = product.pixDescontoPercent ? getPixPriceCents(priceCents, product.pixDescontoPercent) : null;
+  const melhorParcela = product.parcelamentoHabilitado
+    ? melhorParcelaSemJuros(calcularParcelamento(priceCents, product.planoParcelamento))
+    : null;
 
   return (
     <Link
@@ -42,10 +46,26 @@ export function ProductCard({ product }: { product: Product }) {
         <StarRating rating={product.rating} reviewCount={product.reviewCount} />
 
         <div className="mt-1.5 flex flex-col gap-0.5">
+          {pixPriceCents && (
+            <span className="text-xs text-muted line-through tabular-nums">{formatBRL(priceCents)}</span>
+          )}
           <span className="text-[11px] text-muted">A partir de</span>
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-display text-2xl font-bold tabular-nums text-foreground">{formatBRL(priceCents)}</span>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
+              {formatBRL(pixPriceCents ?? priceCents)}
+            </span>
+            {pixPriceCents && (
+              <span className="inline-flex items-center rounded-full bg-success-light text-success text-[10px] font-semibold px-1.5 py-0.5">
+                {product.pixDescontoPercent}% no Pix
+              </span>
+            )}
           </div>
+          {melhorParcela && (
+            <span className="text-[11px] text-muted tabular-nums">
+              ou até {melhorParcela.count}x de {formatBRL(melhorParcela.installmentCents)}
+              {melhorParcela.interestFree ? " sem juros" : " com juros"}
+            </span>
+          )}
         </div>
 
         <span className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">
