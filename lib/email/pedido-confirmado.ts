@@ -1,4 +1,4 @@
-import { resend, EMAIL_FROM } from "./resend";
+import { getResendClient, EMAIL_FROM } from "./resend";
 import { formatBRL } from "@/lib/pricing";
 
 type ItemPedido = {
@@ -118,7 +118,7 @@ export async function enviarEmailPedidoConfirmado(params: {
 </html>`;
 
   try {
-    await resend.emails.send({
+    await getResendClient().emails.send({
       from: EMAIL_FROM,
       to: paraEmail,
       subject: `Pedido confirmado #${numeroPedido} — Brasil Multi Tech`,
