@@ -29,6 +29,13 @@ export async function enviarSolicitacao(
   const { agoraCents, maisValorCents } = calcularOfertas(input);
   const valorEscolhidoCents = input.offerType === "agora" ? agoraCents : maisValorCents;
 
+  // O cliente já escolheu a modalidade e viu o valor ANTES de enviar (ele
+  // seleciona o card na etapa "Oferta") — não existe contraproposta nem
+  // aprovação manual de admin depois disso, então o envio já é a
+  // aceitação: o registro nasce em "aceito" e segue direto pra etapa de
+  // assinatura do contrato (ver effectiveStep em VenderWizard.tsx).
+  const agora = new Date().toISOString();
+
   const { data, error } = await supabase
     .from("trade_in_requests")
     .insert({
@@ -52,10 +59,12 @@ export async function enviarSolicitacao(
       includes_charger: input.includesCharger ?? false,
       offer_type: input.offerType,
       estimated_value_cents: valorEscolhidoCents,
+      final_value_cents: valorEscolhidoCents,
       contact_name: input.contactName,
       contact_phone: input.contactPhone,
       contact_email: input.contactEmail,
-      status: "novo",
+      status: "aceito",
+      responded_at: agora,
     })
     .select("id")
     .single();
@@ -88,27 +97,6 @@ async function buscarSolicitacaoPropria(id: string) {
   }
 
   return { solicitacao };
-}
-
-export async function responderProposta(id: string, aceitar: boolean): Promise<{ error?: string }> {
-  const resultado = await buscarSolicitacaoPropria(id);
-  if ("erro" in resultado) return { error: resultado.erro };
-  if (resultado.solicitacao.status !== "proposta_enviada") {
-    return { error: "Essa solicitação não tem uma proposta pendente." };
-  }
-
-  const supabaseAdmin = createAdminClient();
-  await supabaseAdmin
-    .from("trade_in_requests")
-    .update({
-      status: aceitar ? "aceito" : "recusado",
-      responded_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  revalidatePath("/vender/formulario");
-  return {};
 }
 
 export async function assinarContrato(id: string, nomeCompleto: string): Promise<{ error?: string }> {

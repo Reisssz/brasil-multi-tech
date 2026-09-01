@@ -1,4 +1,3 @@
-import { PRICING_RULES } from "@/lib/pricing";
 import { Reveal } from "../ui/Reveal";
 
 const items = [
@@ -17,7 +16,7 @@ const items = [
     icon: <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z M9.5 12l1.8 1.8L15 10" />,
   },
   {
-    label: `${PRICING_RULES.pixDiscountPercent}% de desconto pagando no Pix`,
+    label: "Pagamento via Pix",
     icon: <path d="M12 2l3 3-3 3-3-3 3-3Z M12 16l3 3-3 3-3-3 3-3Z M2 12l3-3 3 3-3 3-3-3Z M16 12l3-3 3 3-3 3-3-3Z" />,
   },
 ];

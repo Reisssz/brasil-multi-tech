@@ -35,10 +35,10 @@ export async function CategoryShowcase() {
             <ProductImage
               icon={featured.image as ProductIconKey}
               photoSrc={featuredPhoto}
-              tint="brand"
+              tint="white"
               className="flex-1 min-h-[180px] lg:min-h-0 w-full"
             />
-            <div className="p-5 flex items-end justify-between gap-2 bg-brand-light">
+            <div className="p-5 flex items-end justify-between gap-2 bg-surface">
               <div className="flex flex-col gap-0.5">
                 <span className="font-display text-xl font-bold text-foreground">{featured.name}</span>
                 <span className="text-sm text-muted">
@@ -63,6 +63,7 @@ export async function CategoryShowcase() {
               <ProductImage
                 icon={c.image as ProductIconKey}
                 photoSrc={restPhotos[i]}
+                tint="white"
                 className="aspect-[4/3] w-full"
               />
               <div className="p-4 flex flex-col gap-0.5">

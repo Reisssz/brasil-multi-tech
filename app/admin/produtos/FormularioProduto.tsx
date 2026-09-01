@@ -12,7 +12,6 @@ type Variante = {
   storageGb: string;
   condition: string;
   price: string;
-  compareAt: string;
   stock: string;
   sku: string;
   photos: string[];
@@ -47,7 +46,6 @@ function varianteVazia(): Variante {
     storageGb: "",
     condition: "novo",
     price: "",
-    compareAt: "",
     stock: "0",
     sku: "",
     photos: [],
@@ -288,18 +286,6 @@ export default function FormularioProduto({
                     required
                     value={v.price}
                     onChange={(e) => atualizarVariante(indice, "price", e.target.value)}
-                    className="h-10 w-full rounded-lg border border-border px-2.5 text-sm outline-none focus:border-brand"
-                  />
-                </CampoVariante>
-
-                <CampoVariante label="Preço riscado (opcional)">
-                  <input
-                    name="varianteCompareAt"
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={v.compareAt}
-                    onChange={(e) => atualizarVariante(indice, "compareAt", e.target.value)}
                     className="h-10 w-full rounded-lg border border-border px-2.5 text-sm outline-none focus:border-brand"
                   />
                 </CampoVariante>

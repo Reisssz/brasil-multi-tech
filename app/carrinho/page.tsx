@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { formatBRL, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL } from "@/lib/pricing";
 import { getMainPhoto } from "@/lib/data/products";
 import { CONDITION_LABELS } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "@/components/ui/ProductImage";
@@ -36,7 +36,6 @@ export default function CartPage() {
     );
   }
 
-  const pixTotal = getPixPriceCents(totalCents);
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
@@ -52,6 +51,7 @@ export default function CartPage() {
                   icon={variant.images[0] as ProductIconKey}
                   photoSrc={getMainPhoto(variant)}
                   accent={variant.colorHex}
+                  tint="white"
                   className="w-20 h-20 rounded-xl shrink-0"
                 />
                 <div className="flex flex-1 flex-col gap-1">
@@ -106,14 +106,10 @@ export default function CartPage() {
             <span>Subtotal</span>
             <span className="tabular-nums">{formatBRL(totalCents)}</span>
           </div>
-          <div className="flex justify-between text-sm text-success font-medium">
-            <span>Desconto no Pix</span>
-            <span className="tabular-nums">-{formatBRL(totalCents - pixTotal)}</span>
-          </div>
           <div className="h-px bg-border" />
           <div className="flex justify-between text-base font-bold text-foreground">
-            <span>Total no Pix</span>
-            <span className="tabular-nums">{formatBRL(pixTotal)}</span>
+            <span>Total</span>
+            <span className="tabular-nums">{formatBRL(totalCents)}</span>
           </div>
           <span className="text-xs text-muted">ou parcele no cartão de crédito no pagamento</span>
           <Link

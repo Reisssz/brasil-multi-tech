@@ -12,15 +12,6 @@ export function ProductCard({ product }: { product: Product }) {
   // condition badge and the price shown never contradict each other.
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);
   const priceCents = getMinPriceCents(product);
-  const hasDiscount = product.variants.some((v) => v.compareAtCents && v.compareAtCents > v.priceCents);
-  const discountPercent = hasDiscount
-    ? Math.round(
-        (1 -
-          Math.min(...product.variants.map((v) => v.priceCents)) /
-            Math.max(...product.variants.map((v) => v.compareAtCents ?? v.priceCents))) *
-          100
-      )
-    : 0;
 
   return (
     <Link
@@ -35,7 +26,6 @@ export function ProductCard({ product }: { product: Product }) {
           className="aspect-square w-full"
         />
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
-          {hasDiscount && <Badge tone="brand">-{discountPercent}% OFF</Badge>}
           {isSeminovo(mainVariant.condition) && <Badge tone="neutral">{CONDITION_LABELS[mainVariant.condition]}</Badge>}
         </div>
         {product.freeShipping && (
@@ -52,9 +42,6 @@ export function ProductCard({ product }: { product: Product }) {
         <StarRating rating={product.rating} reviewCount={product.reviewCount} />
 
         <div className="mt-1.5 flex flex-col gap-0.5">
-          {hasDiscount && mainVariant.compareAtCents && (
-            <span className="text-xs text-muted line-through tabular-nums">{formatBRL(mainVariant.compareAtCents)}</span>
-          )}
           <span className="text-[11px] text-muted">A partir de</span>
           <div className="flex items-baseline gap-1.5">
             <span className="font-display text-2xl font-bold tabular-nums text-foreground">{formatBRL(priceCents)}</span>

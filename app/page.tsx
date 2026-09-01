@@ -12,12 +12,12 @@ export default function Home() {
     <>
       <Hero />
       <QuickTiles />
-      <TrustBar />
-      <HowItWorks />
       <CategoryShowcase />
       <FeaturedOffers />
       <PromoBannerStrip />
       <TrustSection />
+      <TrustBar />
+      <HowItWorks />
     </>
   );
 }

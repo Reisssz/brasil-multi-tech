@@ -107,7 +107,7 @@ export function ComboKit({ produtoBase, sugestoes }: { produtoBase: ProdutoBase;
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-5 h-fit lg:sticky lg:top-24">
           <div className="flex items-center gap-3">
-            <ProductImage icon={produtoBase.icone as ProductIconKey} photoSrc={produtoBase.photoUrl ?? undefined} className="w-14 h-14 rounded-lg shrink-0" />
+            <ProductImage icon={produtoBase.icone as ProductIconKey} photoSrc={produtoBase.photoUrl ?? undefined} tint="white" className="w-14 h-14 rounded-lg shrink-0" />
             <div className="min-w-0">
               <p className="text-xs text-muted">Produto principal</p>
               <p className="text-sm font-semibold text-foreground line-clamp-2">{produtoBase.name}</p>

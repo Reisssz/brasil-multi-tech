@@ -44,6 +44,7 @@ export function ProductGallery({
             icon={slots[active].icon as ProductIconKey}
             photoSrc={slots[active].photoSrc}
             accent={accent}
+            tint="white"
             className="aspect-square w-full"
           />
         </div>
@@ -59,7 +60,7 @@ export function ProductGallery({
               }`}
               aria-label={`Ver imagem ${i + 1}`}
             >
-              <ProductImage icon={slot.icon as ProductIconKey} photoSrc={slot.photoSrc} accent={accent} className="w-full h-full" />
+              <ProductImage icon={slot.icon as ProductIconKey} photoSrc={slot.photoSrc} accent={accent} tint="white" className="w-full h-full" />
             </button>
           ))}
         </div>

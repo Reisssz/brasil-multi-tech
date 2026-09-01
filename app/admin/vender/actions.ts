@@ -3,29 +3,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+/**
+ * O fluxo de venda (escolha da modalidade, assinatura do contrato, forma de
+ * recebimento) é 100% automático — o cliente conduz tudo sozinho em
+ * /vender/formulario (ver VenderWizard.tsx). A única ação manual que sobra
+ * pro admin é marcar como "Concluído" depois de efetivamente enviar o
+ * pagamento (Pix/transferência), já que não há integração de pagamento de
+ * saída — isso continua sendo feito fora do sistema, no banco.
+ */
 export async function atualizarStatusVenda(solicitacaoId: string, status: string) {
   const supabase = await createClient();
   await supabase.from("trade_in_requests").update({ status, updated_at: new Date().toISOString() }).eq("id", solicitacaoId);
-  revalidatePath("/admin/vender");
-}
-
-export async function definirValorFinal(solicitacaoId: string, formData: FormData) {
-  const supabase = await createClient();
-  const valor = Number(formData.get("valorFinal") ?? 0);
-  if (valor <= 0) return;
-
-  const expiraEm = new Date();
-  expiraEm.setDate(expiraEm.getDate() + 7);
-
-  await supabase
-    .from("trade_in_requests")
-    .update({
-      final_value_cents: Math.round(valor * 100),
-      status: "proposta_enviada",
-      proposal_expires_at: expiraEm.toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", solicitacaoId);
-
   revalidatePath("/admin/vender");
 }

@@ -1,5 +1,4 @@
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
-import { PRICING_RULES } from "@/lib/pricing";
 import Link from "next/link";
 
 const faqs = [
@@ -7,10 +6,6 @@ const faqs = [
     question: "Quanto tempo leva para minha entrega chegar?",
     answer:
       "O prazo médio é de 3 a 10 dias úteis, dependendo da sua região. Assim que o pedido é enviado, você recebe o código de rastreamento por e-mail e pode acompanhar tudo na página de rastreamento.",
-  },
-  {
-    question: "Como funciona o desconto no Pix?",
-    answer: `Pagando via Pix você recebe ${PRICING_RULES.pixDiscountPercent}% de desconto automático no valor total da compra, aplicado direto no checkout, sem cupom.`,
   },
   {
     question: "Posso parcelar no cartão de crédito?",

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { formatBRL, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
 
@@ -59,12 +59,10 @@ export default function CheckoutPage() {
     stateUf.trim().length === 2;
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
-  const pixTotal = getPixPriceCents(totalCents) + freteCents;
-  // O total no cartão não é calculado aqui: quem processa é o Mercado Pago,
-  // e as parcelas/juros reais só são definidos na tela de pagamento dele —
-  // um valor calculado por nós poderia não bater com o que é cobrado de
-  // verdade.
-  const cardTotal = totalCents + freteCents;
+  // Mesmo total pra qualquer forma de pagamento — sem desconto no Pix, e o
+  // cartão não é calculado aqui: quem processa é o Mercado Pago, e as
+  // parcelas/juros reais só são definidos na tela de pagamento dele.
+  const totalFinal = totalCents + freteCents;
 
   if (items.length === 0 && !submitting) {
     return (
@@ -384,9 +382,9 @@ export default function CheckoutPage() {
                         <div className="flex flex-col gap-2">
                           {(
                             [
-                              { id: "pix" as const, label: "Pix", hint: "aprovação na hora, com desconto" },
+                              { id: "pix" as const, label: "Pix", hint: "aprovação na hora" },
                               { id: "boleto" as const, label: "Boleto", hint: "compensação em até 2 dias úteis" },
-                              { id: "cartao" as const, label: "Cartão de crédito", hint: "parcele em até 18x" },
+                              { id: "cartao" as const, label: "Cartão de crédito", hint: "parcele no pagamento" },
                             ]
                           ).map((m) => (
                             <label
@@ -464,9 +462,7 @@ export default function CheckoutPage() {
           <div className="h-px bg-border" />
           <div className="flex justify-between text-base font-bold text-foreground">
             <span>Total</span>
-            <span className="tabular-nums">
-              {formatBRL(paymentMethod === "pix" ? pixTotal : paymentMethod === "cartao" ? cardTotal : totalCents + freteCents)}
-            </span>
+            <span className="tabular-nums">{formatBRL(totalFinal)}</span>
           </div>
         </div>
       </div>

@@ -3,10 +3,16 @@ import { Reveal } from "../ui/Reveal";
 
 const tiles = [
   {
-    label: "Ofertas",
-    href: "/categoria/ofertas",
+    label: "Vender meu aparelho",
+    href: "/vender",
     icon: (
-      <path d="M4 4h7l9 9-7 7-9-9V4Z M8 8h.01" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" />
+      <path
+        d="M12 2 3 7v10l9 5 9-5V7l-9-5Z M3 7l9 5 9-5 M12 12v10"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
     ),
   },
   {

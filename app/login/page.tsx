@@ -11,11 +11,18 @@ function FormularioLogin() {
   const [estado, formAction, pending] = useActionState(entrar, estadoInicial);
   const searchParams = useSearchParams();
   const redirectPara = searchParams.get("redirect") ?? "/conta";
+  const senhaRedefinida = searchParams.get("senhaRedefinida") === "1";
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 sm:px-6 py-12">
       <h1 className="font-display text-2xl font-bold text-foreground mb-1">Entrar</h1>
       <p className="text-sm text-muted mb-8">Acesse sua conta Brasil Multi Tech.</p>
+
+      {senhaRedefinida && (
+        <p className="mb-4 rounded-lg bg-success-light px-3 py-2 text-sm text-success">
+          Senha redefinida com sucesso! Entre com a nova senha.
+        </p>
+      )}
 
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="redirectPara" value={redirectPara} />

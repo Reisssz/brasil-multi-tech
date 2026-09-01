@@ -112,7 +112,7 @@ export function ProductDetail({
             {product.freeShipping && <Badge tone="brand">Frete grátis</Badge>}
           </div>
 
-          <PriceBlock priceCents={activeVariant.priceCents} compareAtCents={activeVariant.compareAtCents} size="lg" />
+          <PriceBlock priceCents={activeVariant.priceCents} size="lg" />
 
           {colors.length > 1 && (
             <div className="flex flex-col gap-2">

@@ -11,7 +11,7 @@ import {
   type RespostasEstimativa,
   type SaudeBateria,
 } from "@/lib/trade-in/pricing";
-import { assinarContrato, definirRecebimento, enviarSolicitacao, responderProposta } from "./actions";
+import { assinarContrato, definirRecebimento, enviarSolicitacao } from "./actions";
 import { StepTracker, type WizardStepId } from "./StepTracker";
 
 const DRAFT_KEY = "bmt_vender_rascunho_v1";
@@ -89,8 +89,6 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const [metodoRecebimento, setMetodoRecebimento] = useState<"pix" | "transferencia">("pix");
   const [detalhesRecebimento, setDetalhesRecebimento] = useState("");
   const [salvandoRecebimento, setSalvandoRecebimento] = useState(false);
-
-  const [respondendo, setRespondendo] = useState(false);
 
   // Restaura um rascunho salvo antes de mandar pro login (só quando não há
   // nenhuma solicitação já registrada no banco).
@@ -187,15 +185,17 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const aparelhoValido = brand.trim().length > 1 && model.trim().length > 1;
   const contatoValido = contactName.trim().length > 2 && contactPhone.trim().length >= 8 && contactEmail.includes("@");
 
+  // Assim que enviada, a solicitação já nasce aceita (o cliente escolhe a
+  // modalidade e vê o valor ANTES de enviar) — não existe contraproposta,
+  // então qualquer solicitação registrada vai direto pra assinatura do
+  // contrato e depois pro checkout, sem etapa de espera no meio.
   let effectiveStep: WizardStepId;
   if (!row) {
     effectiveStep = localStep;
-  } else if (row.status === "aceito") {
-    effectiveStep = !row.contract_accepted_at ? "termos" : "checkout";
-  } else if (row.status === "concluido") {
-    effectiveStep = "checkout";
+  } else if (!row.contract_accepted_at) {
+    effectiveStep = "termos";
   } else {
-    effectiveStep = "oferta";
+    effectiveStep = "checkout";
   }
 
   async function handleEnviarSolicitacao() {
@@ -235,17 +235,6 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       setErro("Não foi possível enviar sua solicitação agora. Tente novamente.");
     } finally {
       setEnviando(false);
-    }
-  }
-
-  async function handleResponderProposta(aceitar: boolean) {
-    if (!row) return;
-    setRespondendo(true);
-    try {
-      await responderProposta(row.id, aceitar);
-      router.refresh();
-    } finally {
-      setRespondendo(false);
     }
   }
 
@@ -555,53 +544,6 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
               </>
             )}
 
-            {row && (row.status === "novo" || row.status === "em_analise") && (
-              <div className="text-center py-8">
-                <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-brand-light text-brand-dark mb-4">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                </span>
-                <h2 className="font-bold text-foreground text-lg mb-2">Recebemos sua solicitação!</h2>
-                <p className="text-sm text-muted max-w-sm mx-auto mb-4">
-                  Você escolheu <strong>{row.offer_type === "mais_valor" ? "Venda Mais Valor" : "Venda Agora"}</strong>,
-                  com estimativa de até {formatBRL(row.estimated_value_cents ?? 0)}. Nossa equipe está avaliando as
-                  informações e vai enviar uma proposta em breve.
-                </p>
-              </div>
-            )}
-
-            {row && row.status === "proposta_enviada" && (
-              <div className="text-center py-6">
-                <span className="text-xs uppercase tracking-wide text-brand-dark font-semibold">Proposta recebida</span>
-                <p className="font-display text-4xl font-bold text-foreground mt-1 mb-2">
-                  {formatBRL(row.final_value_cents ?? 0)}
-                </p>
-                {row.proposal_expires_at && (
-                  <p className="text-xs text-muted mb-6">
-                    Válida até {new Date(row.proposal_expires_at).toLocaleDateString("pt-BR")}
-                  </p>
-                )}
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    disabled={respondendo}
-                    onClick={() => handleResponderProposta(false)}
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-border px-6 text-sm font-semibold text-foreground hover:bg-[#f7f8fa] transition-colors disabled:opacity-40"
-                  >
-                    Recusar
-                  </button>
-                  <button
-                    disabled={respondendo}
-                    onClick={() => handleResponderProposta(true)}
-                    className="inline-flex h-11 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground px-6 text-sm font-bold transition-colors"
-                  >
-                    {respondendo ? "Enviando…" : "Aceitar proposta"}
-                  </button>
-                </div>
-              </div>
-            )}
-
           </div>
         </div>
       )}
@@ -753,12 +695,8 @@ function getBanner(step: WizardStepId, row: TradeInRequestRow | null, rejeitado:
       ? { title: "Ops!", subtitle: "Esse aparelho não é elegível para compra — veja o motivo abaixo." }
       : { title: "Estamos avançando!", subtitle: "Só precisamos de algumas informações rápidas." };
   }
-  if (step === "oferta") {
-    if (row?.status === "proposta_enviada") return { title: "Sua proposta chegou!", subtitle: "Confira o valor e nos diga se aceita." };
-    if (row?.status === "novo" || row?.status === "em_analise") return { title: "Falta pouco!", subtitle: "Estamos avaliando suas informações." };
-    return { title: "Sua oferta está pronta!", subtitle: "Escolha como prefere vender." };
-  }
-  if (step === "termos") return { title: "Falta pouco!", subtitle: "Leia e assine os termos da venda." };
+  if (step === "oferta") return { title: "Sua oferta está pronta!", subtitle: "Escolha como prefere vender." };
+  if (step === "termos") return { title: "Proposta aceita!", subtitle: "Leia e assine os termos da venda para formalizar." };
   if (row?.status === "concluido") return { title: "Concluído!", subtitle: "Essa venda já foi finalizada." };
   if (row?.payment_method) return { title: "Tudo certo!", subtitle: "Assim que recebermos o aparelho, seguimos com o pagamento." };
   return { title: "Quase lá!", subtitle: "Escolha como deseja receber o pagamento." };

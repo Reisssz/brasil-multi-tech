@@ -46,7 +46,6 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
             storageGb: v.storage_gb?.toString() ?? "",
             condition: v.condition,
             price: (v.price_cents / 100).toString(),
-            compareAt: v.compare_at_cents ? (v.compare_at_cents / 100).toString() : "",
             stock: v.stock.toString(),
             sku: v.sku ?? "",
             photos: v.photos ?? [],

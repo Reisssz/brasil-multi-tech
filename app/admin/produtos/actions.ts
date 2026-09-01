@@ -42,7 +42,6 @@ function extrairVariantes(formData: FormData) {
   const storages = formData.getAll("varianteStorage") as string[];
   const condicoes = formData.getAll("varianteCondicao") as string[];
   const precos = formData.getAll("variantePreco") as string[];
-  const precosComparacao = formData.getAll("varianteCompareAt") as string[];
   const estoques = formData.getAll("varianteEstoque") as string[];
   const skus = formData.getAll("varianteSku") as string[];
 
@@ -54,7 +53,6 @@ function extrairVariantes(formData: FormData) {
       storage_gb: storages[i] ? Number(storages[i]) : null,
       condition: condicoes[i] || "novo",
       price_cents: Math.round(Number(precos[i] ?? 0) * 100),
-      compare_at_cents: precosComparacao[i] ? Math.round(Number(precosComparacao[i]) * 100) : null,
       stock: Number(estoques[i] ?? 0),
       sku: skus[i] || null,
       photos: formData.getAll(`varianteFotosExistentes_${i}`) as string[],

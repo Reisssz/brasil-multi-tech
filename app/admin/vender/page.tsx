@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/pricing";
-import { atualizarStatusVenda, definirValorFinal } from "./actions";
+import { atualizarStatusVenda } from "./actions";
 
 const ROTULO_STATUS: Record<string, string> = {
   novo: "Novo",
@@ -29,7 +29,12 @@ export default async function AdminVender() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
-      <h1 className="font-display text-2xl font-bold text-foreground mb-6">Venda de aparelhos</h1>
+      <h1 className="font-display text-2xl font-bold text-foreground mb-2">Venda de aparelhos</h1>
+      <p className="text-sm text-muted mb-6">
+        O cliente escolhe a modalidade, assina o contrato e informa como quer receber sozinho — nada disso
+        precisa de ação sua. A única coisa que sobra é marcar como <strong>Concluído</strong> depois de enviar o
+        pagamento (Pix/transferência) por fora do sistema.
+      </p>
 
       <div className="flex flex-col gap-4">
         {solicitacoes?.map((s) => (
@@ -96,19 +101,6 @@ export default async function AdminVender() {
             )}
 
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <form action={definirValorFinal.bind(null, s.id)} className="flex items-center gap-2">
-                <input
-                  name="valorFinal"
-                  type="number"
-                  step="0.01"
-                  placeholder="Valor final (R$)"
-                  className="h-9 w-36 rounded-lg border border-border px-2 text-xs"
-                />
-                <button type="submit" className="h-9 rounded-lg bg-brand hover:bg-brand-dark px-3 text-xs font-semibold text-brand-foreground transition-colors">
-                  Enviar proposta
-                </button>
-              </form>
-
               <form
                 action={async (formData: FormData) => {
                   "use server";

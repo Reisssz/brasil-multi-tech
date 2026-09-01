@@ -4,7 +4,6 @@ import { getProductBySlugDb, getProductBySlugForMetadataDb, getRelatedProductsDb
 import { getMinPriceCents } from "@/lib/data/products";
 import { ProductDetail } from "@/components/product/ProductDetail";
 import { ComboSuggestions } from "@/components/product/ComboSuggestions";
-import { getPixPriceCents } from "@/lib/pricing";
 import { SITE } from "@/lib/config";
 
 export async function generateMetadata({
@@ -55,7 +54,7 @@ export default async function ProductPage({
       "@type": "Offer",
       url: `https://${SITE.domain}/produto/${product.slug}`,
       priceCurrency: "BRL",
-      price: (getPixPriceCents(priceCents) / 100).toFixed(2),
+      price: (priceCents / 100).toFixed(2),
       availability: product.variants.some((v) => v.stock > 0)
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
