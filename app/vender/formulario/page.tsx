@@ -18,7 +18,7 @@ export default async function FormularioVenderPage() {
       supabase
         .from("trade_in_requests")
         .select(
-          "id, status, category, brand, model, storage_gb, color, offer_type, estimated_value_cents, final_value_cents, proposal_expires_at, contract_accepted_name, contract_accepted_at, payment_method, payment_pix_key, payment_bank_details"
+          "id, status, category, brand, model, storage_gb, color, imei, offer_type, estimated_value_cents, final_value_cents, proposal_expires_at, contract_accepted_name, contract_accepted_at, payment_method, payment_pix_key, payment_bank_details"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })

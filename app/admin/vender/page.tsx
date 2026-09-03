@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/pricing";
 import { atualizarStatusVenda } from "./actions";
@@ -29,7 +30,12 @@ export default async function AdminVender() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10">
-      <h1 className="font-display text-2xl font-bold text-foreground mb-2">Venda de aparelhos</h1>
+      <div className="flex items-start justify-between gap-4 mb-2">
+        <h1 className="font-display text-2xl font-bold text-foreground">Venda de aparelhos</h1>
+        <Link href="/admin/vender/precos" className="text-sm font-semibold text-brand-dark hover:underline shrink-0">
+          Editar preços de avaliação →
+        </Link>
+      </div>
       <p className="text-sm text-muted mb-6">
         O cliente escolhe a modalidade, assina o contrato e informa como quer receber sozinho — nada disso
         precisa de ação sua. A única coisa que sobra é marcar como <strong>Concluído</strong> depois de enviar o
@@ -46,6 +52,9 @@ export default async function AdminVender() {
                 </h2>
                 <p className="text-xs text-muted">
                   {s.contact_name} · {s.contact_phone} · {s.contact_email}
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  IMEI: <span className="font-mono">{s.imei ?? "—"}</span>
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${CORES_STATUS[s.status] ?? ""}`}>

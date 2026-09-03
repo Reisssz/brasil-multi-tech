@@ -4,17 +4,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/pricing";
 import {
+  buildCatalogo,
   calcularOfertas,
   deveRejeitar,
+  type CatalogoPrecos,
   type MarcasDeUso,
   type OfferType,
   type RespostasEstimativa,
   type SaudeBateria,
 } from "@/lib/trade-in/pricing";
+import { createClient } from "@/lib/supabase/client";
 import { assinarContrato, definirRecebimento, enviarSolicitacao } from "./actions";
 import { StepTracker, type WizardStepId } from "./StepTracker";
 
 const DRAFT_KEY = "bmt_vender_rascunho_v1";
+const REGEX_IMEI = /^\d{15}$/;
+
+/** Catálogo curado (botões de seleção — item 01 do relatório de ajustes). "Outro/Outra" sempre revela um campo livre pra não travar quem tem um modelo fora da lista. */
+const MARCAS_SUGERIDAS = ["Apple", "Samsung", "Motorola", "Xiaomi"];
+const CORES_SUGERIDAS = ["Preto", "Branco", "Prata", "Dourado", "Azul", "Verde", "Roxo", "Rosa"];
 
 export type TradeInRequestRow = {
   id: string;
@@ -24,6 +32,7 @@ export type TradeInRequestRow = {
   model: string;
   storage_gb: number | null;
   color: string | null;
+  imei: string | null;
   offer_type: OfferType | null;
   estimated_value_cents: number | null;
   final_value_cents: number | null;
@@ -56,9 +65,28 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
   const [category, setCategory] = useState("celular");
   const [brand, setBrand] = useState("");
+  const [brandOutra, setBrandOutra] = useState("");
   const [model, setModel] = useState("");
+  const [modelOutro, setModelOutro] = useState("");
   const [storageGb, setStorageGb] = useState("");
   const [color, setColor] = useState("");
+  const [colorOutra, setColorOutra] = useState("");
+  const [imei, setImei] = useState("");
+
+  const [linhasCatalogo, setLinhasCatalogo] = useState<{ brand: string; model: string; valor_cents: number }[]>([]);
+  const catalogo: CatalogoPrecos = useMemo(() => buildCatalogo(linhasCatalogo), [linhasCatalogo]);
+  const modelosDaMarca = useMemo(
+    () => linhasCatalogo.filter((l) => l.brand.toLowerCase() === brand.toLowerCase()).map((l) => l.model),
+    [linhasCatalogo, brand]
+  );
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("trade_in_base_prices")
+      .select("brand, model, valor_cents")
+      .then(({ data }) => setLinhasCatalogo(data ?? []));
+  }, []);
 
   const [turnsOn, setTurnsOn] = useState(true);
   const [fazRecebeLigacoes, setFazRecebeLigacoes] = useState(true);
@@ -108,9 +136,13 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       /* eslint-disable react-hooks/set-state-in-effect */
       if (draft.category) setCategory(draft.category);
       if (draft.brand) setBrand(draft.brand);
+      if (draft.brandOutra) setBrandOutra(draft.brandOutra);
       if (draft.model) setModel(draft.model);
+      if (draft.modelOutro) setModelOutro(draft.modelOutro);
       if (draft.storageGb) setStorageGb(draft.storageGb);
       if (draft.color) setColor(draft.color);
+      if (draft.colorOutra) setColorOutra(draft.colorOutra);
+      if (draft.imei) setImei(draft.imei);
       if (typeof draft.turnsOn === "boolean") setTurnsOn(draft.turnsOn);
       if (typeof draft.fazRecebeLigacoes === "boolean") setFazRecebeLigacoes(draft.fazRecebeLigacoes);
       if (typeof draft.wifiBluetoothOk === "boolean") setWifiBluetoothOk(draft.wifiBluetoothOk);
@@ -139,7 +171,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       sessionStorage.setItem(
         DRAFT_KEY,
         JSON.stringify({
-          category, brand, model, storageGb, color,
+          category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei,
           turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
           traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
           saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType,
@@ -150,13 +182,20 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       // localStorage/sessionStorage indisponível (modo privado etc) — sem problema
     }
   }, [
-    row, category, brand, model, storageGb, color, turnsOn, fazRecebeLigacoes, wifiBluetoothOk,
+    row, category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei,
+    turnsOn, fazRecebeLigacoes, wifiBluetoothOk,
     marcasDeUso, traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
     saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType, contactName, contactPhone, contactEmail,
   ]);
 
+  // "Outro(a)" no seletor de botões revela um campo livre — resolve pro
+  // valor de verdade usado no cálculo e no envio.
+  const brandResolvido = brand === "Outra" ? brandOutra : brand;
+  const modelResolvido = model === "Outro" ? modelOutro : model;
+  const colorResolvido = color === "Outra" ? colorOutra : color;
+
   const respostas: RespostasEstimativa = {
-    brand, model,
+    brand: brandResolvido, model: modelResolvido,
     storageGb: storageGb ? Number(storageGb) : undefined,
     turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
     traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
@@ -171,21 +210,22 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const ofertas = useMemo(
     () =>
       calcularOfertas({
-        brand, model,
+        brand: brandResolvido, model: modelResolvido,
         storageGb: storageGb ? Number(storageGb) : undefined,
         turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
         traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
         saudeBateria, pecaNaoGenuina, includesBox, includesCharger,
-      }),
+      }, catalogo),
     [
-      brand, model, storageGb, turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
+      brandResolvido, modelResolvido, storageGb, turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
       traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-      saudeBateria, pecaNaoGenuina, includesBox, includesCharger,
+      saudeBateria, pecaNaoGenuina, includesBox, includesCharger, catalogo,
     ]
   );
 
-  const aparelhoValido = brand.trim().length > 1 && model.trim().length > 1;
+  const aparelhoValido = brandResolvido.trim().length > 1 && modelResolvido.trim().length > 1;
   const contatoValido = contactName.trim().length > 2 && contactPhone.trim().length >= 8 && contactEmail.includes("@");
+  const imeiValido = REGEX_IMEI.test(imei);
 
   // Assim que enviada, a solicitação já nasce aceita (o cliente escolhe a
   // modalidade e vê o valor ANTES de enviar) — não existe contraproposta,
@@ -201,6 +241,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   }
 
   async function handleEnviarSolicitacao() {
+    if (!imeiValido) {
+      setErro("Informe um IMEI válido, com os 15 números.");
+      return;
+    }
     if (!contatoValido) {
       setErro("Preencha seus dados de contato.");
       return;
@@ -211,7 +255,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       const resultado = await enviarSolicitacao({
         ...respostas,
         category,
-        color: color || undefined,
+        color: colorResolvido || undefined,
+        imei,
         offerType,
         contactName,
         contactPhone,
@@ -302,27 +347,57 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                 { value: "outro", label: "Outro" },
               ]}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Campo label="Marca" value={brand} onChange={setBrand} placeholder="Ex: Apple, Samsung" />
-              <Campo label="Modelo" value={model} onChange={setModel} placeholder="Ex: iPhone 14 Pro" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Select
-                label="Armazenamento"
-                value={storageGb}
-                onChange={setStorageGb}
-                options={[
-                  { value: "", label: "Não sei / não se aplica" },
-                  { value: "32", label: "32GB" },
-                  { value: "64", label: "64GB" },
-                  { value: "128", label: "128GB" },
-                  { value: "256", label: "256GB" },
-                  { value: "512", label: "512GB" },
-                  { value: "1024", label: "1TB" },
-                ]}
-              />
-              <Campo label="Cor" value={color} onChange={setColor} placeholder="Ex: Roxo" />
-            </div>
+            <PerguntaOpcoes
+              pergunta="Marca"
+              valor={brand}
+              onChange={(v) => {
+                setBrand(v);
+                setModel(""); // marca mudou — o modelo escolhido antes pode não existir mais na lista
+              }}
+              opcoes={[...MARCAS_SUGERIDAS.map((m) => ({ value: m, label: m })), { value: "Outra", label: "Outra marca" }]}
+            />
+            {brand === "Outra" && (
+              <Campo label="Qual marca?" value={brandOutra} onChange={setBrandOutra} placeholder="Digite a marca" />
+            )}
+
+            {brandResolvido.trim().length > 0 && (
+              <>
+                <PerguntaOpcoes
+                  pergunta="Modelo"
+                  valor={model}
+                  onChange={setModel}
+                  opcoes={[...modelosDaMarca.map((m) => ({ value: m, label: m })), { value: "Outro", label: "Outro modelo" }]}
+                />
+                {model === "Outro" && (
+                  <Campo label="Qual modelo?" value={modelOutro} onChange={setModelOutro} placeholder="Ex: iPhone 14 Pro" />
+                )}
+              </>
+            )}
+
+            <Select
+              label="Armazenamento"
+              value={storageGb}
+              onChange={setStorageGb}
+              options={[
+                { value: "", label: "Não sei / não se aplica" },
+                { value: "32", label: "32GB" },
+                { value: "64", label: "64GB" },
+                { value: "128", label: "128GB" },
+                { value: "256", label: "256GB" },
+                { value: "512", label: "512GB" },
+                { value: "1024", label: "1TB" },
+              ]}
+            />
+
+            <PerguntaOpcoes
+              pergunta="Cor"
+              valor={color}
+              onChange={setColor}
+              opcoes={[...CORES_SUGERIDAS.map((c) => ({ value: c, label: c })), { value: "Outra", label: "Outra cor" }]}
+            />
+            {color === "Outra" && (
+              <Campo label="Qual cor?" value={colorOutra} onChange={setColorOutra} placeholder="Digite a cor" />
+            )}
           </div>
 
           <button
@@ -335,10 +410,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
           <LiveEstimateStrip
             show={aparelhoValido}
-            brand={brand}
-            model={model}
+            brand={brandResolvido}
+            model={modelResolvido}
             storageGb={storageGb}
-            color={color}
+            color={colorResolvido}
             valorCents={ofertas.agoraCents}
           />
         </div>
@@ -347,10 +422,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       {effectiveStep === "condicoes" && !row && (
         <div className="grid lg:grid-cols-[220px_1fr_240px] gap-5 items-start">
           <DeviceSummaryCard
-            brand={brand}
-            model={model}
+            brand={brandResolvido}
+            model={modelResolvido}
             storageGb={storageGb ? Number(storageGb) : null}
-            color={color}
+            color={colorResolvido}
             onEditar={() => setLocalStep("aparelho")}
           />
 
@@ -470,10 +545,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       {effectiveStep === "condicoes" && !row && (
         <LiveEstimateStrip
           show={!rejeitado}
-          brand={brand}
-          model={model}
+          brand={brandResolvido}
+          model={modelResolvido}
           storageGb={storageGb}
-          color={color}
+          color={colorResolvido}
           valorCents={ofertas.agoraCents}
         />
       )}
@@ -481,10 +556,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       {effectiveStep === "oferta" && (
         <div className="grid lg:grid-cols-[220px_1fr] gap-5 items-start">
           <DeviceSummaryCard
-            brand={row?.brand ?? brand}
-            model={row?.model ?? model}
+            brand={row?.brand ?? brandResolvido}
+            model={row?.model ?? modelResolvido}
             storageGb={row ? row.storage_gb : storageGb ? Number(storageGb) : null}
-            color={row?.color ?? color}
+            color={row?.color ?? colorResolvido}
             onEditar={!row ? () => setLocalStep("condicoes") : undefined}
           />
 
@@ -503,6 +578,24 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                       "Compramos em praticamente qualquer condição",
                     ]}
                   />
+                </div>
+
+                <h3 className="font-semibold text-foreground text-sm mb-2">IMEI do aparelho</h3>
+                <div className="mb-5">
+                  <Campo
+                    label="IMEI (15 números)"
+                    value={imei}
+                    onChange={(v) => setImei(v.replace(/\D/g, "").slice(0, 15))}
+                    placeholder="Ex: 123456789012345"
+                    inputMode="numeric"
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    Para encontrar, digite <strong>*#06#</strong> no teclado do seu aparelho. Se ele tiver dois
+                    chips, informe apenas um dos códigos IMEI mostrados.
+                  </p>
+                  {imei.length > 0 && !imeiValido && (
+                    <p className="text-xs text-red-600 mt-1">O IMEI precisa ter exatamente 15 números.</p>
+                  )}
                 </div>
 
                 <h3 className="font-semibold text-foreground text-sm mb-2">Seus dados de contato</h3>
@@ -524,7 +617,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                     Voltar
                   </button>
                   <button
-                    disabled={enviando || !contatoValido}
+                    disabled={enviando || !contatoValido || !imeiValido}
                     onClick={handleEnviarSolicitacao}
                     className="inline-flex h-11 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground px-6 text-sm font-bold transition-colors"
                   >
@@ -549,7 +642,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
               <p className="font-semibold mb-2">Termo de Aceite de Venda de Aparelho Usado</p>
               <p className="mb-2">
                 Pelo presente termo, eu declaro ser o legítimo proprietário do aparelho{" "}
-                <strong>{row.brand} {row.model}{row.storage_gb ? ` ${row.storage_gb}GB` : ""}{row.color ? `, cor ${row.color}` : ""}</strong>,
+                <strong>{row.brand} {row.model}{row.storage_gb ? ` ${row.storage_gb}GB` : ""}{row.color ? `, cor ${row.color}` : ""}</strong>
+                {row.imei ? <>, IMEI <strong>{row.imei}</strong></> : ""},
                 e concordo em vendê-lo à Brasil Multi Tech pelo valor de{" "}
                 <strong>{formatBRL(row.final_value_cents ?? row.estimated_value_cents ?? 0)}</strong>, com pagamento
                 em até 10 dias corridos.

@@ -1,42 +1,32 @@
 /**
  * Preços-base de referência para o cálculo automático de estimativa de
- * compra de aparelhos usados. São valores de mercado aproximados para um
- * aparelho em condição "excelente" com 64/128GB — o algoritmo ajusta a
- * partir daí conforme as respostas do formulário.
- *
- * Ajuste esses valores livremente conforme o mercado mudar — não precisa
- * mexer em mais nada do código para atualizar os preços.
+ * compra de aparelhos usados. Antes viviam hardcoded aqui — agora vêm da
+ * tabela trade_in_base_prices (editável pelo admin em /admin/vender/precos)
+ * e chegam como `catalogo`, montado por quem chama estas funções (browser
+ * ou servidor) com buildCatalogo(). São valores de mercado aproximados
+ * para um aparelho em condição "excelente" com 64/128GB — o algoritmo
+ * ajusta a partir daí conforme as respostas do formulário.
  */
-export const BASE_PRICES_CENTS: Record<string, number> = {
-  "apple|iphone 11": 90000,
-  "apple|iphone 11 pro max": 140000,
-  "apple|iphone 12": 130000,
-  "apple|iphone 12 mini": 100000,
-  "apple|iphone 12 pro": 160000,
-  "apple|iphone 12 pro max": 190000,
-  "apple|iphone 13": 170000,
-  "apple|iphone 13 mini": 130000,
-  "apple|iphone 13 pro": 220000,
-  "apple|iphone 13 pro max": 260000,
-  "apple|iphone 14": 210000,
-  "apple|iphone 14 pro": 290000,
-  "apple|iphone 14 pro max": 330000,
-  "apple|iphone se": 70000,
-  "samsung|galaxy s21": 90000,
-  "samsung|galaxy s22": 130000,
-  "samsung|galaxy s23": 190000,
-  "samsung|galaxy a54": 90000,
-  "samsung|galaxy a34": 70000,
-  "xiaomi|redmi note": 40000,
-  "motorola|moto g": 35000,
-};
+export type CatalogoPrecos = Record<string, number>;
+
+export function buildCatalogo(linhas: { brand: string; model: string; valor_cents: number }[]): CatalogoPrecos {
+  const catalogo: CatalogoPrecos = {};
+  for (const linha of linhas) {
+    catalogo[`${linha.brand.trim().toLowerCase()}|${linha.model.trim().toLowerCase()}`] = linha.valor_cents;
+  }
+  return catalogo;
+}
 
 const DEFAULT_BASE_PRICE_CENTS = 30000;
 const STORAGE_STEP_MULTIPLIER = 0.06; // cada salto de armazenamento (ex: 128→256GB) soma ~6%
 
-export function buscarPrecoBase(brand: string, model: string): { valorCents: number; encontrado: boolean } {
+export function buscarPrecoBase(
+  brand: string,
+  model: string,
+  catalogo: CatalogoPrecos
+): { valorCents: number; encontrado: boolean } {
   const chave = `${brand.trim().toLowerCase()}|${model.trim().toLowerCase()}`;
-  const valor = BASE_PRICES_CENTS[chave];
+  const valor = catalogo[chave];
   return valor !== undefined ? { valorCents: valor, encontrado: true } : { valorCents: DEFAULT_BASE_PRICE_CENTS, encontrado: false };
 }
 
@@ -99,11 +89,14 @@ export function deveRejeitar(respostas: Pick<RespostasEstimativa, "turnsOn" | "f
  * resultado é sempre uma ESTIMATIVA — o valor final é confirmado depois
  * que a equipe recebe e inspeciona o aparelho fisicamente.
  */
-export function calcularEstimativa(respostas: RespostasEstimativa): {
+export function calcularEstimativa(
+  respostas: RespostasEstimativa,
+  catalogo: CatalogoPrecos
+): {
   valorEstimadoCents: number;
   precoBaseEncontrado: boolean;
 } {
-  const { valorCents: base, encontrado } = buscarPrecoBase(respostas.brand, respostas.model);
+  const { valorCents: base, encontrado } = buscarPrecoBase(respostas.brand, respostas.model, catalogo);
 
   let valor = base;
 
@@ -136,12 +129,15 @@ export function calcularEstimativa(respostas: RespostasEstimativa): {
 }
 
 /** Os dois valores mostrados lado a lado na etapa "Oferta". */
-export function calcularOfertas(respostas: RespostasEstimativa): {
+export function calcularOfertas(
+  respostas: RespostasEstimativa,
+  catalogo: CatalogoPrecos
+): {
   agoraCents: number;
   maisValorCents: number;
   precoBaseEncontrado: boolean;
 } {
-  const { valorEstimadoCents, precoBaseEncontrado } = calcularEstimativa(respostas);
+  const { valorEstimadoCents, precoBaseEncontrado } = calcularEstimativa(respostas, catalogo);
   return {
     agoraCents: valorEstimadoCents,
     maisValorCents: Math.round((valorEstimadoCents * MAIS_VALOR_MULTIPLIER) / 100) * 100,
