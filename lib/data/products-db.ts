@@ -219,6 +219,125 @@ export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCat
   return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r, plano))];
 }
 
+/**
+ * Vitrine posicionada manualmente pelo admin (grade de 5 colunas, ver
+ * FormularioProduto.tsx). Prioriza quem tem `grade_posicao` definida
+ * (ordenado pela posição), e completa o restante com os produtos mais
+ * recentes — mesmo comportamento de "nunca ficar vazia" de
+ * getFeaturedProductsDb, mas essa função é separada porque
+ * getFeaturedProductsDb também é usada em /mais-vendidos com limit=50 e
+ * outra semântica (não faria sentido misturar as duas).
+ */
+export async function getVitrineDb(limit = 10): Promise<Product[]> {
+  const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
+
+  const { data: posicionados, error } = await supabase
+    .from("products")
+    .select(SELECT_PRODUTO_COMPLETO)
+    .eq("ativo", true)
+    .not("grade_posicao", "is", null)
+    .order("grade_posicao", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    console.error("[products-db] getVitrineDb:", error.message);
+    return [];
+  }
+
+  const produtos = (posicionados as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  if (produtos.length >= limit) return produtos;
+
+  const idsExcluidos = produtos.map((p) => p.id);
+  const { data: recentes } = await supabase
+    .from("products")
+    .select(SELECT_PRODUTO_COMPLETO)
+    .eq("ativo", true)
+    .not("id", "in", `(${(idsExcluidos.length > 0 ? idsExcluidos : ["00000000-0000-0000-0000-000000000000"]).join(",")})`)
+    .order("created_at", { ascending: false })
+    .limit(limit - produtos.length);
+
+  return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r, plano))];
+}
+
+/**
+ * Fileira exclusiva de ofertas Apple que aparece antes da vitrine geral na
+ * home. `brand` é texto livre no cadastro (sem normalização), por isso
+ * `ilike` em vez de `eq`. "Oferta" segue a mesma regra usada em
+ * getProductsByCategoryDb para categorySlug "ofertas": compareAtCents >
+ * priceCents em alguma variante — não é uma coluna própria no banco.
+ */
+export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
+  const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(SELECT_PRODUTO_COMPLETO)
+    .eq("ativo", true)
+    .ilike("brand", "apple")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[products-db] getOfertasAppleDb:", error.message);
+    return [];
+  }
+
+  const comDesconto = (data as unknown as LinhaProduto[])
+    .map((r) => mapearProduto(r, plano))
+    .map((produto) => {
+      let melhorDesconto = 0;
+      for (const v of produto.variants) {
+        if (v.compareAtCents && v.compareAtCents > v.priceCents) {
+          const percent = (v.compareAtCents - v.priceCents) / v.compareAtCents;
+          if (percent > melhorDesconto) melhorDesconto = percent;
+        }
+      }
+      return { produto, melhorDesconto };
+    })
+    .filter((x) => x.melhorDesconto > 0)
+    .sort((a, b) => b.melhorDesconto - a.melhorDesconto)
+    .slice(0, limit);
+
+  return comDesconto.map((x) => x.produto);
+}
+
+export type ProdutoPosicionado = {
+  id: string;
+  name: string;
+  brand: string;
+  gradePosicao: number;
+  thumbnail: string | null;
+};
+
+/** Produtos já posicionados na vitrine — alimenta o mini-grid clicável do admin (FormularioProduto.tsx). */
+export async function listarPosicoesOcupadasDb(): Promise<ProdutoPosicionado[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, brand, grade_posicao, product_variants ( photos )")
+    .eq("ativo", true)
+    .not("grade_posicao", "is", null)
+    .order("grade_posicao", { ascending: true });
+
+  if (error || !data) {
+    console.error("[products-db] listarPosicoesOcupadasDb:", error?.message);
+    return [];
+  }
+
+  return data.map((row) => {
+    const variantes = (row.product_variants ?? []) as { photos: string[] }[];
+    const foto = variantes.flatMap((v) => v.photos ?? [])[0] ?? null;
+    return {
+      id: row.id,
+      name: row.name,
+      brand: row.brand ?? "",
+      gradePosicao: row.grade_posicao as number,
+      thumbnail: foto,
+    };
+  });
+}
+
 export async function getProductBySlugForMetadataDb(slug: string): Promise<Product | null> {
   const supabase = createAdminClient();
   const plano = await getSiteSettingsDb();

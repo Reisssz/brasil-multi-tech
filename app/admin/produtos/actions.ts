@@ -79,6 +79,8 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
   const parcelamentoHabilitado = formData.get("parcelamentoHabilitado") === "on";
   const pixDescontoPercentBruto = String(formData.get("pixDescontoPercent") ?? "").trim();
   const pixDescontoPercent = pixDescontoPercentBruto ? Number(pixDescontoPercentBruto) : null;
+  const gradePosicaoBruto = String(formData.get("gradePosicao") ?? "").trim();
+  const gradePosicao = gradePosicaoBruto ? Number(gradePosicaoBruto) : null;
 
   const variantes = extrairVariantes(formData);
 
@@ -87,6 +89,12 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
   }
 
   const slug = `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // Libera a célula da grade antes de ocupá-la — como é um produto novo,
+  // não existe "self" pra excluir, só precisa desalojar quem estiver lá.
+  if (gradePosicao !== null) {
+    await supabase.from("products").update({ grade_posicao: null }).eq("grade_posicao", gradePosicao);
+  }
 
   const { data: produto, error } = await supabase
     .from("products")
@@ -103,6 +111,7 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
       em_destaque: emDestaque,
       parcelamento_habilitado: parcelamentoHabilitado,
       pix_desconto_percent: pixDescontoPercent,
+      grade_posicao: gradePosicao,
       ativo: true,
     })
     .select("id")
@@ -155,12 +164,37 @@ export async function atualizarProduto(
   const parcelamentoHabilitado = formData.get("parcelamentoHabilitado") === "on";
   const pixDescontoPercentBruto = String(formData.get("pixDescontoPercent") ?? "").trim();
   const pixDescontoPercent = pixDescontoPercentBruto ? Number(pixDescontoPercentBruto) : null;
+  const gradePosicaoBruto = String(formData.get("gradePosicao") ?? "").trim();
+  const gradePosicao = gradePosicaoBruto ? Number(gradePosicaoBruto) : null;
 
   if (!name || !categoryId) {
     return { erro: "Preencha nome e categoria." };
   }
 
-  const { data: produtoAtual } = await supabase.from("products").select("slug").eq("id", produtoId).single();
+  const { data: produtoAtual } = await supabase
+    .from("products")
+    .select("slug, grade_posicao")
+    .eq("id", produtoId)
+    .single();
+
+  const posicaoAntiga = produtoAtual?.grade_posicao ?? null;
+  let ocupanteParaTrocar: string | null = null;
+
+  // Célula da grade mudou: descobre quem está nela (pra devolver a posição
+  // antiga desse produto depois) e libera a célula ANTES de ocupá-la — o
+  // índice único em grade_posicao rejeita duas linhas com o mesmo valor, e
+  // essa ordem (liberar → ocupar) evita colidir com ele.
+  if (gradePosicao !== null && gradePosicao !== posicaoAntiga) {
+    const { data: ocupante } = await supabase
+      .from("products")
+      .select("id")
+      .eq("grade_posicao", gradePosicao)
+      .neq("id", produtoId)
+      .maybeSingle();
+    ocupanteParaTrocar = ocupante?.id ?? null;
+
+    await supabase.from("products").update({ grade_posicao: null }).eq("grade_posicao", gradePosicao).neq("id", produtoId);
+  }
 
   const { error } = await supabase
     .from("products")
@@ -177,9 +211,23 @@ export async function atualizarProduto(
       em_destaque: emDestaque,
       parcelamento_habilitado: parcelamentoHabilitado,
       pix_desconto_percent: pixDescontoPercent,
+      grade_posicao: gradePosicao,
       updated_at: new Date().toISOString(),
     })
     .eq("id", produtoId);
+
+  // Troca de verdade: quem estava na célula alvo herda a posição antiga
+  // deste produto (se ele tinha uma). Se essa update falhar, o ocupante só
+  // fica sem posição — estado recuperável, não gera duplicata na grade.
+  if (!error && ocupanteParaTrocar && posicaoAntiga !== null) {
+    const { error: erroTroca } = await supabase
+      .from("products")
+      .update({ grade_posicao: posicaoAntiga })
+      .eq("id", ocupanteParaTrocar);
+    if (erroTroca) {
+      console.error("[admin/produtos] falha ao trocar posição na grade:", erroTroca.message);
+    }
+  }
 
   if (error) {
     console.error("[admin/produtos] falha ao atualizar produto:", error.message);

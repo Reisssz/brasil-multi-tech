@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/pricing";
 import { atualizarStatusVenda } from "./actions";
+import { VerDocumentoButton } from "./VerDocumentoButton";
 
 const ROTULO_STATUS: Record<string, string> = {
   novo: "Novo",
@@ -128,6 +129,7 @@ export default async function AdminVender() {
                   Atualizar status
                 </button>
               </form>
+              {s.documento_selfie_path && <VerDocumentoButton solicitacaoId={s.id} />}
             </div>
           </div>
         ))}

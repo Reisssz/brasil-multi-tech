@@ -28,7 +28,14 @@ export default async function AdminVenderPrecos() {
         {precos?.map((p) => (
           <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-foreground">{p.brand}</p>
+              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                {p.brand}
+                {p.valor_cents < 5000 && (
+                  <span className="rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5">
+                    Revisar preço
+                  </span>
+                )}
+              </p>
               <p className="text-xs text-muted">{p.model}</p>
             </div>
             <div className="flex items-center gap-2">

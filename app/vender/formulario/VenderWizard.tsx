@@ -14,7 +14,7 @@ import {
   type SaudeBateria,
 } from "@/lib/trade-in/pricing";
 import { createClient } from "@/lib/supabase/client";
-import { assinarContrato, definirRecebimento, enviarSolicitacao } from "./actions";
+import { assinarContrato, definirRecebimento, enviarDocumentoIdentidade, enviarSolicitacao } from "./actions";
 import { StepTracker, type WizardStepId } from "./StepTracker";
 
 const DRAFT_KEY = "bmt_vender_rascunho_v1";
@@ -39,6 +39,7 @@ export type TradeInRequestRow = {
   proposal_expires_at: string | null;
   contract_accepted_name: string | null;
   contract_accepted_at: string | null;
+  documento_selfie_uploaded_at: string | null;
   payment_method: "pix" | "transferencia" | null;
   payment_pix_key: string | null;
   payment_bank_details: string | null;
@@ -120,6 +121,11 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const [metodoRecebimento, setMetodoRecebimento] = useState<"pix" | "transferencia">("pix");
   const [detalhesRecebimento, setDetalhesRecebimento] = useState("");
   const [salvandoRecebimento, setSalvandoRecebimento] = useState(false);
+
+  const [arquivoDocumento, setArquivoDocumento] = useState<File | null>(null);
+  const [previewDocumento, setPreviewDocumento] = useState<string | null>(null);
+  const [enviandoDocumento, setEnviandoDocumento] = useState(false);
+  const [erroDocumento, setErroDocumento] = useState<string | null>(null);
 
   // Restaura um rascunho salvo antes de mandar pro login (só quando não há
   // nenhuma solicitação já registrada no banco).
@@ -236,6 +242,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
     effectiveStep = localStep;
   } else if (!row.contract_accepted_at) {
     effectiveStep = "termos";
+  } else if (!row.documento_selfie_uploaded_at) {
+    effectiveStep = "documentos";
   } else {
     effectiveStep = "checkout";
   }
@@ -302,6 +310,56 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       router.refresh();
     } finally {
       setAssinando(false);
+    }
+  }
+
+  function selecionarFotoDocumento(file: File | null) {
+    setArquivoDocumento(file);
+    setErroDocumento(null);
+    setPreviewDocumento((atual) => {
+      if (atual) URL.revokeObjectURL(atual);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  async function handleEnviarDocumento() {
+    if (!row || !arquivoDocumento) return;
+    setErroDocumento(null);
+    setEnviandoDocumento(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setErroDocumento("Sua sessão expirou — faça login novamente.");
+        return;
+      }
+
+      const extensao = arquivoDocumento.name.split(".").pop() || "jpg";
+      const caminho = `${user.id}/${row.id}/documento-selfie-${Date.now()}.${extensao}`;
+
+      const { error: erroUpload } = await supabase.storage.from("documentos-venda").upload(caminho, arquivoDocumento, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+      if (erroUpload) {
+        console.error("[vender/formulario] falha no upload do documento:", erroUpload.message);
+        setErroDocumento("Não foi possível enviar a foto. Tente novamente.");
+        return;
+      }
+
+      const resultado = await enviarDocumentoIdentidade(row.id, caminho);
+      if (resultado.error) {
+        setErroDocumento(resultado.error);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setErroDocumento("Não foi possível enviar a foto agora. Tente novamente.");
+    } finally {
+      setEnviandoDocumento(false);
     }
   }
 
@@ -686,6 +744,57 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         </div>
       )}
 
+      {effectiveStep === "documentos" && row && (
+        <div className="grid lg:grid-cols-[220px_1fr] gap-5 items-start">
+          <DeviceSummaryCard brand={row.brand} model={row.model} storageGb={row.storage_gb} color={row.color} />
+
+          <div className="rounded-2xl border border-border bg-surface p-6">
+            <h2 className="font-bold text-foreground text-lg mb-2">Confirme sua identidade</h2>
+            <p className="text-sm text-muted mb-4">
+              Por segurança, e para eventual necessidade jurídica, precisamos de uma foto sua segurando um documento
+              de identidade (RG, CNH ou passaporte) ao lado do rosto, com os dados legíveis. Essa foto é guardada de
+              forma privada — só a equipe da Brasil Multi Tech tem acesso.
+            </p>
+
+            <div className="flex flex-col items-center gap-3 mb-4">
+              {previewDocumento ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewDocumento}
+                  alt="Prévia da foto selecionada"
+                  className="max-h-64 rounded-xl border border-border object-contain"
+                />
+              ) : (
+                <div className="w-full h-40 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted">
+                  Nenhuma foto selecionada
+                </div>
+              )}
+
+              <label className="inline-flex items-center gap-2 rounded-lg border border-dashed border-border hover:border-brand hover:bg-brand-light/40 transition-colors px-4 py-2.5 text-sm font-medium text-brand-dark cursor-pointer">
+                {arquivoDocumento ? "Trocar foto" : "Selecionar foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="sr-only"
+                  onChange={(e) => selecionarFotoDocumento(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+
+            {erroDocumento && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{erroDocumento}</p>}
+
+            <button
+              disabled={!arquivoDocumento || enviandoDocumento}
+              onClick={handleEnviarDocumento}
+              className="w-full inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground font-bold text-sm transition-colors"
+            >
+              {enviandoDocumento ? "Enviando…" : "Enviar e continuar"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {effectiveStep === "checkout" && row && (
         <div className="grid lg:grid-cols-[220px_1fr] gap-5 items-start">
           <DeviceSummaryCard brand={row.brand} model={row.model} storageGb={row.storage_gb} color={row.color} />
@@ -781,6 +890,7 @@ function getBanner(step: WizardStepId, row: TradeInRequestRow | null, rejeitado:
   }
   if (step === "oferta") return { title: "Sua oferta está pronta!", subtitle: "Escolha como prefere vender." };
   if (step === "termos") return { title: "Proposta aceita!", subtitle: "Leia e assine os termos da venda para formalizar." };
+  if (step === "documentos") return { title: "Quase lá!", subtitle: "Precisamos confirmar sua identidade antes de seguir." };
   if (row?.status === "concluido") return { title: "Concluído!", subtitle: "Essa venda já foi finalizada." };
   if (row?.payment_method) return { title: "Tudo certo!", subtitle: "Assim que recebermos o aparelho, seguimos com o pagamento." };
   return { title: "Quase lá!", subtitle: "Escolha como deseja receber o pagamento." };

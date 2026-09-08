@@ -1,10 +1,11 @@
-export type WizardStepId = "aparelho" | "condicoes" | "oferta" | "termos" | "checkout";
+export type WizardStepId = "aparelho" | "condicoes" | "oferta" | "termos" | "documentos" | "checkout";
 
 const STEPS: { id: WizardStepId; label: string; description: string }[] = [
   { id: "aparelho", label: "Aparelho", description: "Selecione marca, modelo e especificações do seu celular." },
   { id: "condicoes", label: "Condições", description: "Informe o estado funcional e estético do aparelho." },
   { id: "oferta", label: "Oferta", description: "Veja o valor proposto para o seu dispositivo." },
   { id: "termos", label: "Termos", description: "Leia e assine os termos do contrato." },
+  { id: "documentos", label: "Documento", description: "Envie uma foto sua com o documento de identidade." },
   { id: "checkout", label: "Checkout", description: "Escolha como deseja receber: Pix ou transferência." },
 ];
 
@@ -12,7 +13,7 @@ export function StepTracker({ current }: { current: WizardStepId }) {
   const currentIndex = STEPS.findIndex((s) => s.id === current);
 
   return (
-    <div className="grid grid-cols-5 gap-1 mb-8">
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-8">
       {STEPS.map((step, index) => {
         const isDone = index < currentIndex;
         const isCurrent = index === currentIndex;

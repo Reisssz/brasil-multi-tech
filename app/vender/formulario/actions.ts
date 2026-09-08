@@ -110,7 +110,7 @@ async function buscarSolicitacaoPropria(id: string) {
 
   const { data: solicitacao } = await supabase
     .from("trade_in_requests")
-    .select("id, user_id, status, contract_accepted_at, payment_method, brand, model, storage_gb, color, imei, final_value_cents, estimated_value_cents, contact_name, contact_email")
+    .select("id, user_id, status, contract_accepted_at, documento_selfie_uploaded_at, payment_method, brand, model, storage_gb, color, imei, final_value_cents, estimated_value_cents, contact_name, contact_email")
     .eq("id", id)
     .single();
 
@@ -162,6 +162,39 @@ export async function assinarContrato(id: string, nomeCompleto: string): Promise
   return {};
 }
 
+/**
+ * Foto do cliente segurando o documento ao lado do rosto — respaldo
+ * jurídico em caso de contestação. Bucket privado (`documentos-venda`),
+ * upload já feito direto do navegador (mesmo padrão de
+ * FormularioProduto.tsx); aqui só registramos o caminho no banco depois
+ * de confirmar que o dono da solicitação é quem está enviando.
+ */
+export async function enviarDocumentoIdentidade(id: string, path: string): Promise<{ error?: string }> {
+  const resultado = await buscarSolicitacaoPropria(id);
+  if ("erro" in resultado) return { error: resultado.erro };
+  if (resultado.solicitacao.status !== "aceito" || !resultado.solicitacao.contract_accepted_at) {
+    return { error: "Assine o contrato antes de enviar o documento." };
+  }
+
+  const supabaseAdmin = createAdminClient();
+  const { error } = await supabaseAdmin
+    .from("trade_in_requests")
+    .update({
+      documento_selfie_path: path,
+      documento_selfie_uploaded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[vender/formulario] falha ao registrar documento:", error.message);
+    return { error: "Não foi possível confirmar o envio. Tente novamente." };
+  }
+
+  revalidatePath("/vender/formulario");
+  return {};
+}
+
 export async function definirRecebimento(
   id: string,
   metodo: "pix" | "transferencia",
@@ -175,6 +208,11 @@ export async function definirRecebimento(
   if ("erro" in resultado) return { error: resultado.erro };
   if (resultado.solicitacao.status !== "aceito" || !resultado.solicitacao.contract_accepted_at) {
     return { error: "Assine o contrato antes de escolher como receber." };
+  }
+  // Gate real (não só visual no wizard): sem isso dava pra chamar essa
+  // action direto pulando a etapa de envio do documento.
+  if (!resultado.solicitacao.documento_selfie_uploaded_at) {
+    return { error: "Envie a foto do documento antes de escolher como receber." };
   }
 
   const supabaseAdmin = createAdminClient();
