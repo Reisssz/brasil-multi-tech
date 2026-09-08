@@ -17,7 +17,7 @@ export async function FeaturedOffers() {
           <div>
             <Reveal className="flex items-end justify-between mb-6">
               <div>
-                <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Ofertas Apple</h2>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Celulares em Oferta</h2>
                 <p className="text-muted mt-1">iPhones com desconto ativo agora.</p>
               </div>
             </Reveal>
