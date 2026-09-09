@@ -4,7 +4,7 @@ import { SITE } from "@/lib/config";
 export function TopBar() {
   return (
     <div className="hidden sm:block bg-ink-2 text-ink-muted text-xs">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-9 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 h-9 flex items-center justify-between">
         <span className="font-medium">
           Especialistas em smartphones com garantia — direto de Belém - PA para todo o Brasil!
         </span>

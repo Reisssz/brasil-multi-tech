@@ -3,7 +3,6 @@
 import { useActionState, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { EstadoProduto } from "./actions";
-import type { ProdutoPosicionado } from "@/lib/data/products-db";
 
 type Categoria = { id: string; nome: string };
 
@@ -32,7 +31,6 @@ type ProdutoExistente = {
   emDestaque: boolean;
   parcelamentoHabilitado: boolean;
   pixDescontoPercent: number | null;
-  gradePosicao: number | null;
   variantes: Variante[];
 };
 
@@ -65,38 +63,13 @@ export default function FormularioProduto({
   categorias,
   action,
   produto,
-  posicoesOcupadas,
 }: {
   categorias: Categoria[];
   action: (estado: EstadoProduto, formData: FormData) => Promise<EstadoProduto>;
   produto?: ProdutoExistente;
-  posicoesOcupadas: ProdutoPosicionado[];
 }) {
   const [estado, formAction, pending] = useActionState(action, null);
   const [variantes, setVariantes] = useState<Variante[]>(produto?.variantes ?? [varianteVazia()]);
-
-  const posicaoInicial = produto?.gradePosicao ?? null;
-  const [linha, setLinha] = useState<number | "">(posicaoInicial !== null ? Math.floor(posicaoInicial / 5) + 1 : "");
-  const [coluna, setColuna] = useState<number | "">(posicaoInicial !== null ? (posicaoInicial % 5) + 1 : "");
-  const gradePosicaoAtual = linha !== "" && coluna !== "" ? (linha - 1) * 5 + (coluna - 1) : null;
-
-  const ocupantesPorPosicao = new Map(
-    posicoesOcupadas.filter((p) => p.id !== produto?.id).map((p) => [p.gradePosicao, p])
-  );
-  const maiorLinhaOcupada =
-    posicoesOcupadas.length > 0 ? Math.max(...posicoesOcupadas.map((p) => Math.floor(p.gradePosicao / 5) + 1)) : 0;
-  const totalLinhasGrid = Math.max(maiorLinhaOcupada, typeof linha === "number" ? linha : 0, 1) + 1;
-
-  function clicarCelula(l: number, c: number) {
-    const pos = (l - 1) * 5 + (c - 1);
-    if (gradePosicaoAtual === pos) {
-      setLinha("");
-      setColuna("");
-    } else {
-      setLinha(l);
-      setColuna(c);
-    }
-  }
 
   // Pasta própria pro upload direto do navegador — as fotos vão pro Storage
   // ANTES do submit do formulário, então não dependem do slug do produto
@@ -466,94 +439,6 @@ export default function FormularioProduto({
             placeholder="Deixe em branco se não tiver desconto"
             defaultValue={produto?.pixDescontoPercent ?? undefined}
           />
-        </div>
-      </Secao>
-
-      <Secao titulo="Posicionamento na vitrine (Home)">
-        <p className="text-xs text-muted -mt-2">
-          Opcional. Clique numa célula pra fixar esse produto naquela posição da vitrine da home (grade de 5 por
-          fileira). Clicar numa célula já ocupada troca os dois de lugar ao salvar. Clique na célula selecionada de
-          novo pra tirar o produto da posição fixa.
-        </p>
-
-        <input type="hidden" name="gradePosicao" value={gradePosicaoAtual ?? ""} />
-
-        <div className="flex flex-wrap gap-3 items-end">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            Fileira
-            <input
-              type="number"
-              min={1}
-              value={linha}
-              onChange={(e) => setLinha(e.target.value ? Number(e.target.value) : "")}
-              placeholder="—"
-              className="h-10 w-24 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-            Casa (coluna)
-            <select
-              value={coluna}
-              onChange={(e) => setColuna(e.target.value ? Number(e.target.value) : "")}
-              className="h-10 w-24 rounded-lg border border-border px-2 text-sm outline-none focus:border-brand bg-white"
-            >
-              <option value="">—</option>
-              {[1, 2, 3, 4, 5].map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          {gradePosicaoAtual !== null && (
-            <button
-              type="button"
-              onClick={() => {
-                setLinha("");
-                setColuna("");
-              }}
-              className="h-10 rounded-lg border border-dashed border-border px-3 text-xs font-medium text-muted hover:border-red-300 hover:text-red-500"
-            >
-              Remover posicionamento
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          {Array.from({ length: totalLinhasGrid }, (_, i) => i + 1).map((l) => (
-            <div key={l} className="grid grid-cols-5 gap-1.5">
-              {[1, 2, 3, 4, 5].map((c) => {
-                const pos = (l - 1) * 5 + (c - 1);
-                const ocupante = ocupantesPorPosicao.get(pos);
-                const selecionada = gradePosicaoAtual === pos;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => clicarCelula(l, c)}
-                    title={ocupante ? `Ocupado por ${ocupante.name}` : `Fileira ${l}, casa ${c}`}
-                    className={`h-14 rounded-lg border text-[10px] font-medium flex flex-col items-center justify-center gap-0.5 px-1 text-center overflow-hidden transition-colors ${
-                      selecionada
-                        ? "border-brand bg-brand-light text-brand-dark"
-                        : ocupante
-                          ? "border-border bg-[#fafafa] text-muted hover:border-amber-300"
-                          : "border-dashed border-border text-muted/60 hover:border-brand/60 hover:text-brand-dark"
-                    }`}
-                  >
-                    {selecionada ? (
-                      <span className="font-semibold">{produto ? "Este produto" : "Novo produto"}</span>
-                    ) : ocupante ? (
-                      <span className="line-clamp-2 leading-tight">{ocupante.name}</span>
-                    ) : (
-                      <span>
-                        {l}·{c}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
         </div>
       </Secao>
 

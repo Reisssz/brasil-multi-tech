@@ -47,7 +47,7 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
         scrolled ? "shadow-[0_4px_16px_rgba(0,0,0,0.3)]" : ""
       }`}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <div className="flex items-center gap-4 sm:gap-6 h-20">
           <Logo />
 
@@ -137,7 +137,9 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
           </div>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-5 h-11 -mt-1 border-t border-ink-border/70 text-sm overflow-x-auto">
+        {/* gap-4 fixo (sem variante maior em telas largas): com gap-5 os links
+            estouravam a coluna por 8px e a barra de rolagem aparecia na navbar. */}
+        <nav className="hidden lg:flex items-center gap-4 h-11 -mt-1 border-t border-ink-border/70 text-sm overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Link href="/categoria/ofertas" className="group flex items-center gap-1 shrink-0 whitespace-nowrap text-ink-foreground font-semibold">
             Categorias
             <Chevron />

@@ -220,52 +220,34 @@ export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCat
 }
 
 /**
- * Vitrine posicionada manualmente pelo admin (grade de 5 colunas, ver
- * FormularioProduto.tsx). Prioriza quem tem `grade_posicao` definida
- * (ordenado pela posição), e completa o restante com os produtos mais
- * recentes — mesmo comportamento de "nunca ficar vazia" de
- * getFeaturedProductsDb, mas essa função é separada porque
- * getFeaturedProductsDb também é usada em /mais-vendidos com limit=50 e
- * outra semântica (não faria sentido misturar as duas).
+ * De um conjunto de produtos, mantém só os que têm desconto ativo em
+ * alguma variante (compareAtCents > priceCents — não é uma coluna própria
+ * no banco, mesma regra usada em getProductsByCategoryDb para
+ * categorySlug "ofertas"), ordenados pelo maior desconto percentual.
+ * Compartilhado por todas as fileiras de "ofertas" da home.
  */
-export async function getVitrineDb(limit = 10): Promise<Product[]> {
-  const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
-
-  const { data: posicionados, error } = await supabase
-    .from("products")
-    .select(SELECT_PRODUTO_COMPLETO)
-    .eq("ativo", true)
-    .not("grade_posicao", "is", null)
-    .order("grade_posicao", { ascending: true })
-    .limit(limit);
-
-  if (error) {
-    console.error("[products-db] getVitrineDb:", error.message);
-    return [];
-  }
-
-  const produtos = (posicionados as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
-  if (produtos.length >= limit) return produtos;
-
-  const idsExcluidos = produtos.map((p) => p.id);
-  const { data: recentes } = await supabase
-    .from("products")
-    .select(SELECT_PRODUTO_COMPLETO)
-    .eq("ativo", true)
-    .not("id", "in", `(${(idsExcluidos.length > 0 ? idsExcluidos : ["00000000-0000-0000-0000-000000000000"]).join(",")})`)
-    .order("created_at", { ascending: false })
-    .limit(limit - produtos.length);
-
-  return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r, plano))];
+function filtrarEOrdenarPorDesconto(produtos: Product[], limit: number): Product[] {
+  return produtos
+    .map((produto) => {
+      let melhorDesconto = 0;
+      for (const v of produto.variants) {
+        if (v.compareAtCents && v.compareAtCents > v.priceCents) {
+          const percent = (v.compareAtCents - v.priceCents) / v.compareAtCents;
+          if (percent > melhorDesconto) melhorDesconto = percent;
+        }
+      }
+      return { produto, melhorDesconto };
+    })
+    .filter((x) => x.melhorDesconto > 0)
+    .sort((a, b) => b.melhorDesconto - a.melhorDesconto)
+    .slice(0, limit)
+    .map((x) => x.produto);
 }
 
 /**
- * Fileira exclusiva de ofertas Apple que aparece antes da vitrine geral na
- * home. `brand` é texto livre no cadastro (sem normalização), por isso
- * `ilike` em vez de `eq`. "Oferta" segue a mesma regra usada em
- * getProductsByCategoryDb para categorySlug "ofertas": compareAtCents >
- * priceCents em alguma variante — não é uma coluna própria no banco.
+ * Fileira "Celulares em Oferta" da home — só iPhones com desconto ativo.
+ * `brand` é texto livre no cadastro (sem normalização), por isso `ilike`
+ * em vez de `eq`.
  */
 export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
   const supabase = await createClient();
@@ -283,59 +265,83 @@ export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
     return [];
   }
 
-  const comDesconto = (data as unknown as LinhaProduto[])
-    .map((r) => mapearProduto(r, plano))
-    .map((produto) => {
-      let melhorDesconto = 0;
-      for (const v of produto.variants) {
-        if (v.compareAtCents && v.compareAtCents > v.priceCents) {
-          const percent = (v.compareAtCents - v.priceCents) / v.compareAtCents;
-          if (percent > melhorDesconto) melhorDesconto = percent;
-        }
-      }
-      return { produto, melhorDesconto };
-    })
-    .filter((x) => x.melhorDesconto > 0)
-    .sort((a, b) => b.melhorDesconto - a.melhorDesconto)
-    .slice(0, limit);
-
-  return comDesconto.map((x) => x.produto);
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
 }
 
-export type ProdutoPosicionado = {
-  id: string;
-  name: string;
-  brand: string;
-  gradePosicao: number;
-  thumbnail: string | null;
-};
+/** Fileira de ofertas restrita a uma categoria (ex: "Notebooks em Oferta"). */
+export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, limit = 5): Promise<Product[]> {
+  const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
 
-/** Produtos já posicionados na vitrine — alimenta o mini-grid clicável do admin (FormularioProduto.tsx). */
-export async function listarPosicoesOcupadasDb(): Promise<ProdutoPosicionado[]> {
-  const supabase = createAdminClient();
+  const { data: categoria } = await supabase.from("categories").select("id").eq("slug", categorySlug).single();
+  if (!categoria) return [];
+
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, brand, grade_posicao, product_variants ( photos )")
+    .select(SELECT_PRODUTO_COMPLETO)
     .eq("ativo", true)
-    .not("grade_posicao", "is", null)
-    .order("grade_posicao", { ascending: true });
+    .eq("category_id", categoria.id)
+    .order("created_at", { ascending: false });
 
-  if (error || !data) {
-    console.error("[products-db] listarPosicoesOcupadasDb:", error?.message);
+  if (error) {
+    console.error("[products-db] getOfertasCategoriaDb:", error.message);
     return [];
   }
 
-  return data.map((row) => {
-    const variantes = (row.product_variants ?? []) as { photos: string[] }[];
-    const foto = variantes.flatMap((v) => v.photos ?? [])[0] ?? null;
-    return {
-      id: row.id,
-      name: row.name,
-      brand: row.brand ?? "",
-      gradePosicao: row.grade_posicao as number,
-      thumbnail: foto,
-    };
-  });
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
+}
+
+/**
+ * Fileira "Ofertas do dia" — o restante das ofertas ativas de qualquer
+ * marca/categoria, excluindo Apple e notebooks (já cobertos pelas fileiras
+ * dedicadas acima) pra não repetir produto na mesma home.
+ */
+export async function getOfertasDoDiaDb(limit = 10): Promise<Product[]> {
+  const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
+
+  const { data: categoriaNotebooks } = await supabase.from("categories").select("id").eq("slug", "notebooks").single();
+
+  let query = supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true).not("brand", "ilike", "apple");
+  if (categoriaNotebooks) query = query.neq("category_id", categoriaNotebooks.id);
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[products-db] getOfertasDoDiaDb:", error.message);
+    return [];
+  }
+
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
+}
+
+/**
+ * Fileira de celulares com garantia mínima (sem exigir desconto). O número
+ * de meses é parâmetro pra o título da seção e o filtro nunca divergirem —
+ * ver components/home/SmartphonesGarantia.tsx.
+ */
+export async function getSmartphonesComGarantiaDb(minimoMeses: number, limit = 5): Promise<Product[]> {
+  const supabase = await createClient();
+  const plano = await getSiteSettingsDb();
+
+  const { data: categoria } = await supabase.from("categories").select("id").eq("slug", "celulares").single();
+  if (!categoria) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(SELECT_PRODUTO_COMPLETO)
+    .eq("ativo", true)
+    .eq("category_id", categoria.id)
+    .gte("warranty_months", minimoMeses)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("[products-db] getSmartphonesComGarantiaDb:", error.message);
+    return [];
+  }
+
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
 }
 
 export async function getProductBySlugForMetadataDb(slug: string): Promise<Product | null> {

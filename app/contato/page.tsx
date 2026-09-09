@@ -4,7 +4,7 @@ export const metadata = { title: "Contato" };
 
 export default function ContactPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
+    <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2">Fale com a gente</h1>
       <p className="text-muted mb-8">Atendimento rápido e personalizado pelos canais abaixo.</p>
 

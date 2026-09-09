@@ -10,7 +10,7 @@ export default function PaginaCadastro() {
   const [estado, formAction, pending] = useActionState(cadastrar, estadoInicial);
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 sm:px-6 py-12">
+    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl font-bold text-foreground mb-1">Criar conta</h1>
       <p className="text-sm text-muted mb-8">
         Cadastre-se para comprar e acompanhar seus pedidos.

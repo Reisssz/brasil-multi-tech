@@ -9,7 +9,7 @@ function ConfirmationContent() {
   const id = searchParams.get("id");
 
   return (
-    <div className="mx-auto max-w-xl px-4 sm:px-6 py-20 text-center flex flex-col items-center gap-4">
+    <div className="mx-auto max-w-xl px-5 sm:px-8 lg:px-12 py-20 text-center flex flex-col items-center gap-4">
       <span className="flex items-center justify-center w-16 h-16 rounded-full bg-success-light text-success">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
           <path d="M4 12l5 5L20 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />

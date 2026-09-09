@@ -88,7 +88,7 @@ export function ProductDetail({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 pb-28 lg:pb-8">
+    <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-8 pb-28 lg:pb-8">
       <div className="grid lg:grid-cols-2 gap-10">
         <ProductGallery
           images={activeVariant.images as ProductIconKey[]}

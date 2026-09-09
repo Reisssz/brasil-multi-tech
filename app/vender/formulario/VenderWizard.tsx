@@ -382,7 +382,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const banner = getBanner(effectiveStep, row, rejeitado);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-8">
       <div className="rounded-2xl bg-gradient-to-r from-brand to-brand-dark text-brand-foreground px-6 py-5 mb-8">
         <h1 className="font-display text-xl sm:text-2xl font-bold">{banner.title}</h1>
         <p className="text-sm opacity-90 mt-1">{banner.subtitle}</p>

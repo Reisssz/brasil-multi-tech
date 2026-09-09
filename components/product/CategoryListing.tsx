@@ -61,7 +61,7 @@ export function CategoryListing({ products, title }: { products: Product[]; titl
   const priceCeilings = [50000, 100000, 200000, 500000];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-8">
       <div className="flex flex-col gap-1 mb-6">
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{title}</h1>
         <span className="text-sm text-muted">{filtered.length} produtos encontrados</span>

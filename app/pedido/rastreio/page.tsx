@@ -70,7 +70,7 @@ function TrackingContent() {
     : 0;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
+    <div className="mx-auto max-w-2xl px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl font-bold text-foreground mb-2">Rastrear pedido</h1>
       <p className="text-sm text-muted mb-6">Informe o número do seu pedido para acompanhar a entrega.</p>
 

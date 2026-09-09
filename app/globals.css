@@ -64,8 +64,32 @@ body {
   color: var(--foreground);
 }
 
+/* Barra de rolagem em cinza escuro. Componentes que escondem a própria barra
+   (carrossel, navbar) usam `[&::-webkit-scrollbar]:hidden`, cuja regra é por
+   classe e continua vencendo estas aqui. */
 * {
-  scrollbar-color: #d7dae0 transparent;
+  scrollbar-color: #4b5057 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b5057;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #33373d;
+  background-clip: content-box;
 }
 
 .tabular-nums {

@@ -66,7 +66,12 @@ export default async function RootLayout({
         <CartProvider>
           <TopBar />
           <Header categories={categories} />
-          <main className="flex-1 flex flex-col">{children}</main>
+          {/* Bloco, não flex: num container flex as margens automáticas do
+              `mx-auto max-w-7xl` das seções/páginas cancelam o stretch, e cada
+              uma encolhia até a largura do próprio conteúdo (o QuickTiles, por
+              exemplo, renderizava com 741px em vez de 1232px), quebrando o
+              alinhamento lateral da página inteira. */}
+          <main className="flex-1">{children}</main>
           <Footer categories={categories} />
           <NewsletterPopup />
         </CartProvider>

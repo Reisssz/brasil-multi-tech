@@ -3,56 +3,38 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Reveal } from "../ui/Reveal";
-
-const cards = [
-  {
-    title: "Celulares seminovos",
-    subtitle: "Revisados e com garantia, prontos pra usar",
-    href: "/categoria/celulares",
-    photo: "/products/iphone13-midnight-1.webp",
-  },
-  {
-    title: "Notebooks com garantia",
-    subtitle: "Desempenho e economia para o seu dia a dia",
-    href: "/categoria/notebooks",
-    photo: "/products/dell-i3-seminovo-1.webp",
-  },
-  {
-    title: "Venda seu aparelho",
-    subtitle: "Transforme o celular parado em dinheiro",
-    href: "/vender",
-    photo: "/products/iphone11-white-1.webp",
-  },
-  {
-    title: "Acessórios essenciais",
-    subtitle: "Carregadores, power banks e muito mais",
-    href: "/categoria/acessorios",
-    photo: "/products/peining-charger20w-1.jpeg",
-  },
-  {
-    title: "Android por menos",
-    subtitle: "Ótimo custo-benefício em marcas confiáveis",
-    href: "/categoria/celulares",
-    photo: "/products/redmi-note-cores-1.webp",
-  },
-];
+import type { Banner } from "@/lib/banners";
 
 const SLIDE_DURATION = 4500;
 
-export function PromoCarousel() {
+/**
+ * "Fique de olho" — esteira de banners promocionais soltos pelo time de
+ * marketing em public/banners (banner1, banner2, ...), lidos no server
+ * (page.tsx) e passados aqui como prop porque este componente precisa ser
+ * client (estado do carrossel/auto-scroll). Banners com "venda"/"vendas"
+ * no nome do arquivo levam pra /vender; os demais não são clicáveis.
+ *
+ * O track fica DENTRO da mesma coluna (max-w-7xl + px-4/sm:px-6) usada
+ * pelas outras seções — antes ele era full-bleed e começava 80px à
+ * esquerda de todo o resto do site.
+ */
+export function PromoCarousel({ banners }: { banners: Banner[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const goTo = useCallback((i: number) => {
-    setActive(((i % cards.length) + cards.length) % cards.length);
-  }, []);
+  const goTo = useCallback(
+    (i: number) => {
+      setActive(((i % banners.length) + banners.length) % banners.length);
+    },
+    [banners.length]
+  );
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || banners.length <= 1) return;
     const id = setInterval(() => goTo(active + 1), SLIDE_DURATION);
     return () => clearInterval(id);
-  }, [active, paused, goTo]);
+  }, [active, paused, goTo, banners.length]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -62,49 +44,82 @@ export function PromoCarousel() {
     }
   }, [active]);
 
-  return (
-    <section className="bg-surface border-y border-border py-10 overflow-hidden">
-      <Reveal className="mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-between mb-5">
-        <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">Fique de olho</h2>
-        <div className="flex items-center gap-2">
-          {cards.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              aria-label={`Ir para o anúncio ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all ${
-                i === active ? "w-6 bg-brand" : "w-1.5 bg-border hover:bg-muted"
-              }`}
-            />
-          ))}
-        </div>
-      </Reveal>
+  if (banners.length === 0) return null;
 
-      <div
-        ref={trackRef}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        className="flex gap-4 overflow-x-auto px-4 sm:px-6 pb-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {cards.map((c) => (
-          <Link
-            key={c.title}
-            href={c.href}
-            className="group relative shrink-0 snap-start flex w-[78%] xs:w-[60%] sm:w-[42%] lg:w-[30%] aspect-[16/10] rounded-2xl overflow-hidden bg-ink"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element -- decorative promo artwork, not an optimizable content image */}
-            <img
-              src={c.photo}
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain p-6 opacity-95 transition-transform duration-500 ease-out group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-4 flex flex-col">
-              <span className="font-display text-base sm:text-lg font-bold text-white leading-tight">{c.title}</span>
-              <span className="text-xs sm:text-sm text-white/80">{c.subtitle}</span>
+  return (
+    <section className="bg-surface border-y border-border py-12 sm:py-14">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+        <Reveal className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Fique de olho</h2>
+          {banners.length > 1 && (
+            <div className="flex items-center gap-2">
+              {banners.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  aria-label={`Ir para o banner ${i + 1}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === active ? "w-6 bg-brand" : "w-1.5 bg-border hover:bg-muted"
+                  }`}
+                />
+              ))}
             </div>
-          </Link>
-        ))}
+          )}
+        </Reveal>
+
+        <div className="relative">
+          <div
+            ref={trackRef}
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            className="flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {banners.map((banner) => {
+              const wrapperClassName =
+                "group shrink-0 snap-start w-[85%] sm:w-[calc(50%_-_10px)] lg:w-[calc(33.333%_-_14px)] overflow-hidden";
+              const img = (
+                // eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design
+                <img
+                  src={banner.src}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              );
+              return banner.href ? (
+                <Link key={banner.src} href={banner.href} className={`${wrapperClassName} cursor-pointer`}>
+                  <div className="aspect-[16/9]">{img}</div>
+                </Link>
+              ) : (
+                <div key={banner.src} className={wrapperClassName}>
+                  <div className="aspect-[16/9]">{img}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {banners.length > 1 && (
+            <>
+              <button
+                onClick={() => goTo(active - 1)}
+                aria-label="Banner anterior"
+                className="absolute -left-2 sm:-left-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-surface border border-border shadow-[var(--shadow-card)] text-foreground hover:bg-brand hover:text-brand-foreground hover:border-brand transition-all hover:scale-110 active:scale-95"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <path d="M10 3 5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button
+                onClick={() => goTo(active + 1)}
+                aria-label="Próximo banner"
+                className="absolute -right-2 sm:-right-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-surface border border-border shadow-[var(--shadow-card)] text-foreground hover:bg-brand hover:text-brand-foreground hover:border-brand transition-all hover:scale-110 active:scale-95"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </section>
   );

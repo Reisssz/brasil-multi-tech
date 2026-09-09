@@ -30,7 +30,7 @@ const faqs = [
 
 export default function HelpPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
+    <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2">Central de ajuda</h1>
       <p className="text-muted mb-8">Tudo o que você precisa saber antes e depois da compra.</p>
       <FaqAccordion items={faqs} />

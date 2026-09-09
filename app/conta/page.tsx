@@ -40,7 +40,6 @@ export default async function PaginaConta() {
     .order("created_at", { ascending: false });
 
   const nomeCompleto = perfil?.nome_completo?.trim() || "Cliente Brasil Multi Tech";
-  const primeiroNome = nomeCompleto.split(" ")[0];
   const totalPedidos = pedidos?.length ?? 0;
   const totalGasto = (pedidos ?? [])
     .filter((p) => p.status === "paid" || p.status === "shipped" || p.status === "delivered")
@@ -51,7 +50,7 @@ export default async function PaginaConta() {
     : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
+    <div className="mx-auto max-w-2xl px-5 sm:px-8 lg:px-12 py-10">
       {/* Cartão de perfil */}
       <div className="mb-8 rounded-2xl border border-border bg-surface p-6">
         <div className="flex items-center gap-4">

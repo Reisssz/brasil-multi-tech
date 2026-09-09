@@ -90,7 +90,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0 && !submitting) {
     return (
-      <div className="mx-auto max-w-xl px-4 sm:px-6 py-20 text-center flex flex-col items-center gap-4">
+      <div className="mx-auto max-w-xl px-5 sm:px-8 lg:px-12 py-20 text-center flex flex-col items-center gap-4">
         <h1 className="text-xl font-bold text-foreground">Seu carrinho está vazio</h1>
         <p className="text-sm text-muted">Adicione produtos ao carrinho antes de finalizar a compra.</p>
         <Link
@@ -224,7 +224,7 @@ export default function CheckoutPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-8">
       <h1 className="font-display text-2xl font-bold text-foreground mb-6">Finalizar compra</h1>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-8">

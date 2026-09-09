@@ -1,6 +1,6 @@
 import { Product } from "../types";
 
-/** Este catálogo é só mock (usado hoje só pelas avaliações de exemplo em TrustSection) — o catálogo real vem de lib/data/products-db.ts. */
+/** Este catálogo é só mock (usado hoje só pelas avaliações de exemplo em Depoimentos) — o catálogo real vem de lib/data/products-db.ts. */
 type ProdutoMock = Omit<Product, "emDestaque" | "parcelamentoHabilitado" | "planoParcelamento">;
 
 function makeReviews(seed: string): Product["reviews"] {

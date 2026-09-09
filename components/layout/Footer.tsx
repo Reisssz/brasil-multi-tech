@@ -5,7 +5,7 @@ import { SITE, whatsappLink } from "@/lib/config";
 export function Footer({ categories }: { categories: ProductCategory[] }) {
   return (
     <footer className="mt-16 bg-ink-2 text-ink-muted">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 grid grid-cols-2 md:grid-cols-5 gap-8 [&>div]:min-w-0">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-12 grid grid-cols-2 md:grid-cols-5 gap-8 [&>div]:min-w-0">
         <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
           <span className="font-display text-lg font-bold text-ink-foreground">
             BRASIL <span className="text-brand">MULTI TECH</span>
@@ -82,7 +82,7 @@ export function Footer({ categories }: { categories: ProductCategory[] }) {
         </div>
       </div>
       <div className="border-t border-ink-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-5 pb-24 sm:pb-5 flex flex-col sm:flex-row gap-2 items-center justify-between text-center sm:text-left text-xs">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-5 pb-24 sm:pb-5 flex flex-col sm:flex-row gap-2 items-center justify-between text-center sm:text-left text-xs">
           <span>© {new Date().getFullYear()} Brasil Multi Tech. Todos os direitos reservados.</span>
           <span className="break-words">{SITE.address.line1}, {SITE.address.line2}</span>
         </div>

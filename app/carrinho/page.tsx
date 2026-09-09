@@ -12,7 +12,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-20 text-center flex flex-col items-center gap-4">
+      <div className="mx-auto max-w-2xl px-5 sm:px-8 lg:px-12 py-20 text-center flex flex-col items-center gap-4">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" className="text-muted">
           <path
             d="M3 4h2l2.4 12.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H6"
@@ -38,7 +38,7 @@ export default function CartPage() {
 
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
+    <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-8">
       <h1 className="font-display text-2xl font-bold text-foreground mb-6">Meu carrinho</h1>
       <div className="grid lg:grid-cols-[1fr_320px] gap-8">
         <div className="flex flex-col gap-4">

@@ -34,7 +34,7 @@ export default function VenderPage() {
     <div>
       {/* Hero */}
       <section className="bg-ink text-ink-foreground">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-14 text-center">
+        <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-14 text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 text-brand text-xs font-semibold px-3 py-1.5 mb-4">
             Venda rápido e com segurança
           </span>
@@ -55,7 +55,7 @@ export default function VenderPage() {
       </section>
 
       {/* Como funciona */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-14">
+      <section className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-14">
         <h2 className="font-display text-2xl font-bold text-foreground text-center mb-10">Como funciona</h2>
         <div className="grid sm:grid-cols-4 gap-5">
           {[
@@ -102,7 +102,7 @@ export default function VenderPage() {
 
       {/* Por que vender pra gente */}
       <section className="bg-surface border-y border-border">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-14">
+        <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12 py-14">
           <h2 className="font-display text-2xl font-bold text-foreground text-center mb-8">
             Por que vender para a Brasil Multi Tech?
           </h2>
@@ -125,7 +125,7 @@ export default function VenderPage() {
       </section>
 
       {/* FAQ */}
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 py-14">
+      <section className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12 py-14">
         <h2 className="font-display text-2xl font-bold text-foreground text-center mb-8">Perguntas frequentes</h2>
         <FaqAccordion items={faqs} />
 

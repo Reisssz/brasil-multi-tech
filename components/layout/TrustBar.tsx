@@ -24,7 +24,7 @@ const items = [
 export function TrustBar() {
   return (
     <section className="bg-surface border-y border-border">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {items.map((item, i) => (
             <Reveal key={item.label} delay={i * 60} className="group flex items-center gap-2.5">

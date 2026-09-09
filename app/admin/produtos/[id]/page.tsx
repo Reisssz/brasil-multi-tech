@@ -2,24 +2,22 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import FormularioProduto from "../FormularioProduto";
 import { atualizarProduto } from "../actions";
-import { listarPosicoesOcupadasDb } from "@/lib/data/products-db";
 
 export default async function EditarProduto({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: produto }, { data: categorias }, posicoesOcupadas] = await Promise.all([
+  const [{ data: produto }, { data: categorias }] = await Promise.all([
     supabase
       .from("products")
       .select(
         `id, name, brand, category_id, tagline, description, highlights, warranty_months, free_shipping, ativo,
-         em_destaque, parcelamento_habilitado, pix_desconto_percent, grade_posicao,
+         em_destaque, parcelamento_habilitado, pix_desconto_percent,
          product_variants ( color, color_hex, storage_gb, condition, price_cents, compare_at_cents, stock, sku, photos )`
       )
       .eq("id", id)
       .single(),
     supabase.from("categories").select("id, nome").order("ordem"),
-    listarPosicoesOcupadasDb(),
   ]);
 
   if (!produto) notFound();
@@ -32,7 +30,6 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
       <FormularioProduto
         categorias={categorias ?? []}
         action={acaoComId}
-        posicoesOcupadas={posicoesOcupadas}
         produto={{
           id: produto.id,
           name: produto.name,
@@ -47,7 +44,6 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
           emDestaque: produto.em_destaque,
           parcelamentoHabilitado: produto.parcelamento_habilitado,
           pixDescontoPercent: produto.pix_desconto_percent,
-          gradePosicao: produto.grade_posicao,
           variantes: produto.product_variants.map((v) => ({
             color: v.color ?? "",
             colorHex: v.color_hex,

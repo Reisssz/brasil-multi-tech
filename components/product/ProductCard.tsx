@@ -20,7 +20,7 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/produto/${product.slug}?variante=${mainVariant.id}`}
-      className="group flex flex-col rounded-2xl bg-surface border border-border hover:border-brand/60 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 overflow-hidden"
+      className="group flex flex-col bg-surface border border-border hover:border-brand/60 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 overflow-hidden"
     >
       <div className="relative">
         <ProductImage
@@ -68,7 +68,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        <span className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">
+        <span className="mt-2 inline-flex items-center justify-center gap-1.5 bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">
           COMPRAR
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-0.5">
             <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

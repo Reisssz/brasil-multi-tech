@@ -14,7 +14,7 @@ function FormularioLogin() {
   const senhaRedefinida = searchParams.get("senhaRedefinida") === "1";
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 sm:px-6 py-12">
+    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl font-bold text-foreground mb-1">Entrar</h1>
       <p className="text-sm text-muted mb-8">Acesse sua conta Brasil Multi Tech.</p>
 

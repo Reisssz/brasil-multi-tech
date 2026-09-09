@@ -10,7 +10,7 @@ export default async function RedefinirSenhaPage() {
 
   if (!user) {
     return (
-      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 sm:px-6 py-12 text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-5 sm:px-8 lg:px-12 py-12 text-center">
         <h1 className="font-display text-xl font-bold text-foreground mb-2">Link inválido ou expirado</h1>
         <p className="text-sm text-muted mb-6">
           Esse link de redefinição de senha não é mais válido. Solicite um novo para continuar.
@@ -26,7 +26,7 @@ export default async function RedefinirSenhaPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 sm:px-6 py-12">
+    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-5 sm:px-8 lg:px-12 py-12">
       <h1 className="font-display text-2xl font-bold text-foreground mb-1">Criar nova senha</h1>
       <p className="text-sm text-muted mb-8">Escolha uma nova senha para sua conta.</p>
       <RedefinirSenhaForm />

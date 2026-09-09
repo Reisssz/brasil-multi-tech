@@ -47,7 +47,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section className="mx-auto max-w-7xl px-4 sm:px-6 py-14">
+    <section className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-14">
       <Reveal className="text-center mb-10">
         <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Como funciona a compra</h2>
         <p className="text-muted mt-1">Simples, rápido e do jeito que for melhor para você.</p>
