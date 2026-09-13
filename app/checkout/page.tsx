@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { formatBRL, calcularParcelamento, type PlanoParcelamento } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
-import { createClient } from "@/lib/supabase/client";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
-
-const PLANO_PADRAO: PlanoParcelamento = { maxInstallments: 1 };
 
 type Step = 1 | 2 | 3;
 
@@ -53,20 +50,6 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [installments, setInstallments] = useState(1);
-  const [planoParcelamento, setPlanoParcelamento] = useState<PlanoParcelamento>(PLANO_PADRAO);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("site_settings")
-      .select("parcelamento_max_installments")
-      .eq("id", true)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setPlanoParcelamento({ maxInstallments: data.parcelamento_max_installments });
-      });
-  }, []);
 
   const dadosValid = customerName.trim().length > 2 && email.includes("@") && cpf.trim().length >= 11;
   const enderecoValid =
@@ -77,12 +60,12 @@ export default function CheckoutPage() {
     stateUf.trim().length === 2;
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
-  // Opções calculadas com o plano REAL cadastrado pelo admin em
-  // /admin/configuracoes (copiado da própria conta Mercado Pago da loja) —
-  // o valor exato de cada parcela ainda é confirmado na tela do Mercado
-  // Pago (pode variar um pouco por bandeira/emissor), mas a prévia aqui já
-  // reflete a taxa real da loja, não um número inventado.
-  const opcoesParcelamento = calcularParcelamento(totalCents, planoParcelamento);
+  // Opções calculadas com a tabela real de taxas da loja (lib/pricing.ts,
+  // copiada da conta Mercado Pago) — o valor exato de cada parcela ainda é
+  // confirmado na tela do Mercado Pago (pode variar um pouco por bandeira/
+  // emissor), mas a prévia aqui já reflete a taxa real, não um número
+  // inventado.
+  const opcoesParcelamento = calcularParcelamento(totalCents);
   const parcelaEscolhida = opcoesParcelamento.find((o) => o.count === installments) ?? opcoesParcelamento[0];
   const cardTotal = (parcelaEscolhida?.totalCents ?? totalCents) + freteCents;
 

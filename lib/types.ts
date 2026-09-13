@@ -1,5 +1,3 @@
-import type { PlanoParcelamento } from "./pricing";
-
 export type ProductCondition = "novo" | "excelente" | "muito-bom" | "bom" | "outlet";
 
 export type ProductCategorySlug =
@@ -69,8 +67,6 @@ export interface Product {
   parcelamentoHabilitado: boolean;
   /** Opt-in por produto — só alguns produtos têm desconto no Pix. */
   pixDescontoPercent?: number;
-  /** Config global (site_settings), anexada em toda consulta pra quem for calcular parcelamento não precisar buscar de novo. */
-  planoParcelamento: PlanoParcelamento;
 }
 
 export interface CartItem {

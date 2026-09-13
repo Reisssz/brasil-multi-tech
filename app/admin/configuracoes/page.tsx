@@ -1,39 +1,61 @@
-import { createClient } from "@/lib/supabase/server";
-import { ConfiguracoesForm } from "./ConfiguracoesForm";
+import { calcularParcelamento, formatBRL, MAX_PARCELAS_SEM_JUROS } from "@/lib/pricing";
 
-export default async function AdminConfiguracoes() {
-  const supabase = await createClient();
-  const { data: settings } = await supabase
-    .from("site_settings")
-    .select(
-      `parcelamento_max_installments, mp_taxa_cartao_avista_percent, mp_taxa_cartao_2a6x_percent,
-       mp_taxa_cartao_7a12x_percent, mp_taxa_cartao_13a18x_percent, mp_taxa_pix_percent,
-       mp_taxa_boleto_reais, mp_taxa_parcelamento_2x_percent, mp_taxa_parcelamento_13a18x_percent`
-    )
-    .eq("id", true)
-    .single();
+export const metadata = { title: "Parcelamento" };
+
+const VALOR_EXEMPLO_CENTS = 99900;
+
+export default function AdminConfiguracoes() {
+  const opcoes = calcularParcelamento(VALOR_EXEMPLO_CENTS);
 
   return (
-    <div className="mx-auto max-w-xl px-4 sm:px-6 py-10">
-      <h1 className="font-display text-2xl font-bold text-foreground mb-2">Configurações de parcelamento</h1>
+    <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
+      <h1 className="font-display text-2xl font-bold text-foreground mb-2">Parcelamento</h1>
       <p className="text-sm text-muted mb-6">
-        A loja opera no modelo <strong>Parcelado Vendedor</strong> do Mercado Pago: o cliente nunca paga juros ao
-        parcelar, o total é sempre o mesmo dividido em N vezes — quem absorve o custo crescente por faixa de
-        parcela é a loja. As taxas abaixo são só pra sua referência (não aparecem pro cliente); copie da sua
-        conta Mercado Pago em <strong>Seu negócio → Taxas e parcelamento</strong> sempre que ela mudar.
+        Tabela fixa de taxas do Checkout Pro (Mercado Pago), copiada de <strong>Seu negócio → Taxas e
+        parcelamento</strong>. Não é mais configurável por aqui — para mudar algum valor, edite as constantes{" "}
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">TAXA_LOJA_SEM_JUROS_PERCENT</code> e{" "}
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">JUROS_COMPRADOR_PERCENT</code> em{" "}
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">lib/pricing.ts</code> sempre que a taxa
+        do Mercado Pago mudar.
       </p>
 
-      <ConfiguracoesForm
-        maxInstallments={settings?.parcelamento_max_installments ?? 12}
-        taxaCartaoAvista={Number(settings?.mp_taxa_cartao_avista_percent ?? 4.98)}
-        taxaCartao2a6x={Number(settings?.mp_taxa_cartao_2a6x_percent ?? 2.99)}
-        taxaCartao7a12x={Number(settings?.mp_taxa_cartao_7a12x_percent ?? 3.09)}
-        taxaCartao13a18x={Number(settings?.mp_taxa_cartao_13a18x_percent ?? 3.09)}
-        taxaPix={Number(settings?.mp_taxa_pix_percent ?? 0.99)}
-        taxaBoleto={Number(settings?.mp_taxa_boleto_reais ?? 3.49)}
-        taxaParcelamento2x={Number(settings?.mp_taxa_parcelamento_2x_percent ?? 4.52)}
-        taxaParcelamento13a18x={Number(settings?.mp_taxa_parcelamento_13a18x_percent ?? 20.51)}
-      />
+      <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-[#f7f8fa] text-left text-xs text-muted uppercase">
+              <th className="px-4 py-2.5">Parcelas</th>
+              <th className="px-4 py-2.5">Quem paga os juros</th>
+              <th className="px-4 py-2.5 text-right">
+                Valor da parcela
+                <span className="block normal-case font-normal">para uma venda de {formatBRL(VALOR_EXEMPLO_CENTS)}</span>
+              </th>
+              <th className="px-4 py-2.5 text-right">Total pago pelo comprador</th>
+            </tr>
+          </thead>
+          <tbody>
+            {opcoes.map((o) => (
+              <tr key={o.count} className="border-b border-border last:border-0">
+                <td className="px-4 py-2 font-semibold text-foreground">{o.count}x</td>
+                <td className="px-4 py-2 text-muted">
+                  {o.interestFree
+                    ? o.count === 1
+                      ? "— (à vista)"
+                      : "Loja (sem juros pro cliente)"
+                    : "Comprador (juros do emissor)"}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums text-foreground">{formatBRL(o.installmentCents)}</td>
+                <td className="px-4 py-2 text-right tabular-nums text-muted">{formatBRL(o.totalCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-muted mt-4">
+        Até {MAX_PARCELAS_SEM_JUROS}x a loja absorve o custo crescente e o cliente sempre paga o valor cheio.
+        De {MAX_PARCELAS_SEM_JUROS + 1}x em diante a loja recebe como se fosse à vista, e o Mercado Pago cobra
+        os juros direto do comprador na tela de pagamento.
+      </p>
     </div>
   );
 }

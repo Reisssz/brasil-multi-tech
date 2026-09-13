@@ -1,24 +1,21 @@
-import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, getPixPriceCents, type PlanoParcelamento } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, melhorParcelaComJuros, getPixPriceCents } from "@/lib/pricing";
 
 export function PriceBlock({
   priceCents,
   size = "md",
   parcelamentoHabilitado = false,
-  planoParcelamento,
   pixDescontoPercent,
 }: {
   priceCents: number;
   size?: "sm" | "md" | "lg";
   parcelamentoHabilitado?: boolean;
-  planoParcelamento?: PlanoParcelamento;
   pixDescontoPercent?: number;
 }) {
   const priceTextSize = size === "lg" ? "text-3xl" : size === "sm" ? "text-lg" : "text-2xl";
   const pixPriceCents = pixDescontoPercent ? getPixPriceCents(priceCents, pixDescontoPercent) : null;
-  const melhorParcela =
-    parcelamentoHabilitado && planoParcelamento
-      ? melhorParcelaSemJuros(calcularParcelamento(priceCents, planoParcelamento))
-      : null;
+  const opcoesParcelamento = parcelamentoHabilitado ? calcularParcelamento(priceCents) : [];
+  const parcelaSemJuros = melhorParcelaSemJuros(opcoesParcelamento);
+  const parcelaComJuros = melhorParcelaComJuros(opcoesParcelamento);
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -37,12 +34,12 @@ export function PriceBlock({
       </div>
       {/* Fora daqui (checkout, valor cobrado de verdade) quem processa é o
           Mercado Pago — essa prévia só aparece quando o admin habilitou o
-          parcelamento pra este produto, com os números reais configurados
-          em /admin/configuracoes. */}
-      {melhorParcela ? (
+          parcelamento pra este produto, com a tabela real de taxas em
+          lib/pricing.ts. */}
+      {parcelaSemJuros ? (
         <span className="text-xs text-muted tabular-nums">
-          ou em até {melhorParcela.count}x de {formatBRL(melhorParcela.installmentCents)}
-          {melhorParcela.interestFree ? " sem juros" : " com juros"}
+          até {parcelaSemJuros.count}x de {formatBRL(parcelaSemJuros.installmentCents)} sem juros
+          {parcelaComJuros && <> ou {parcelaComJuros.count}x de {formatBRL(parcelaComJuros.installmentCents)} com juros</>}
         </span>
       ) : (
         <span className="text-xs text-muted">ou parcele no cartão de crédito</span>

@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
-import { formatBRL, calcularParcelamento } from "@/lib/pricing";
-import { getSiteSettingsDb } from "@/lib/data/products-db";
+import { formatBRL, calcularParcelamento, MAX_PARCELAS_COM_JUROS } from "@/lib/pricing";
 
 interface CriarPagamentoBody {
   items: CartItem[];
@@ -123,23 +122,20 @@ export async function POST(request: NextRequest) {
   );
   const freteCents = body.frete?.valorCentavos ?? 0;
 
-  // Mesmo total pra qualquer forma de pagamento — sem desconto no Pix. Pro
-  // cartão, o número de parcelas é o que o cliente escolheu no checkout,
-  // calculado com o plano REAL cadastrado pelo admin (copiado do Mercado
-  // Pago) — mas o valor final de verdade quem decide é o Mercado Pago na
-  // tela dele, então isso aqui é só a estimativa registrada no pedido; o
-  // webhook corrige total e parcelas com o dado real assim que o pagamento
-  // é confirmado.
-  let totalCents = subtotalCents + freteCents;
+  // O valor cobrado na preferência do Mercado Pago é sempre o de face
+  // (subtotal + frete), em qualquer forma de pagamento e qualquer número de
+  // parcelas: de 7x a 18x quem cobra e recebe os juros do comprador é o
+  // próprio Mercado Pago/bandeira do cartão (repassados ao emissor), não a
+  // loja — a loja sempre recebe como se fosse à vista (ver lib/pricing.ts).
+  // Só o número de parcelas escolhido é registrado aqui; o valor de cada
+  // parcela com juros é calculado e cobrado pelo Mercado Pago na hora.
+  const totalCents = subtotalCents + freteCents;
   let parcelas = 1;
-  let planoParcelamento: Awaited<ReturnType<typeof getSiteSettingsDb>> | null = null;
 
   if (body.paymentMethod === "cartao") {
-    planoParcelamento = await getSiteSettingsDb();
-    const opcoes = calcularParcelamento(subtotalCents, planoParcelamento);
+    const opcoes = calcularParcelamento(subtotalCents);
     const escolhida = opcoes.find((o) => o.count === (body.installments ?? 1)) ?? opcoes[0];
     if (escolhida) {
-      totalCents = escolhida.totalCents + freteCents;
       parcelas = escolhida.count;
     }
   }
@@ -237,10 +233,10 @@ export async function POST(request: NextRequest) {
       // digitar de novo. O valor final de cada parcela quem calcula é o
       // Mercado Pago (pode variar por bandeira/emissor); isso aqui só
       // define qual opção já vem marcada.
-      ...(planoParcelamento
+      ...(body.paymentMethod === "cartao"
         ? {
             payment_methods: {
-              installments: planoParcelamento.maxInstallments,
+              installments: MAX_PARCELAS_COM_JUROS,
               default_installments: parcelas,
             },
           }

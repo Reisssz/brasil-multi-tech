@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Product, ProductCategory, ProductCategorySlug, ProductCondition, ProductVariant } from "@/lib/types";
-import type { PlanoParcelamento } from "@/lib/pricing";
 import type { ProductIconKey } from "@/components/ui/ProductImage";
 
 const ICONE_POR_CATEGORIA: Record<string, ProductIconKey> = {
@@ -76,33 +75,6 @@ const SELECT_PRODUTO_COMPLETO = `
     compare_at_cents, stock, photos, sku, weight_grams, width_cm, height_cm, length_cm )
 `;
 
-const PLANO_PADRAO: PlanoParcelamento = { maxInstallments: 1 };
-
-/**
- * Config global de parcelamento (site_settings, linha única) — quantas
- * parcelas a loja oferece, sempre sem juros pro cliente (modelo "Parcelado
- * Vendedor" do Mercado Pago — ver /admin/configuracoes pras taxas reais
- * que a loja paga por isso). Usado só quando um produto tem
- * parcelamento_habilitado = true.
- */
-export async function getSiteSettingsDb(): Promise<PlanoParcelamento> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("site_settings")
-    .select("parcelamento_max_installments")
-    .eq("id", true)
-    .single();
-
-  if (error || !data) {
-    console.error("[products-db] getSiteSettingsDb:", error?.message);
-    return PLANO_PADRAO;
-  }
-
-  return {
-    maxInstallments: data.parcelamento_max_installments,
-  };
-}
-
 function mapearVariante(v: LinhaVariante): ProductVariant {
   return {
     id: v.id,
@@ -122,7 +94,7 @@ function mapearVariante(v: LinhaVariante): ProductVariant {
   };
 }
 
-function mapearProduto(row: LinhaProduto, plano: PlanoParcelamento): Product {
+function mapearProduto(row: LinhaProduto): Product {
   const categorySlug = (row.categories?.slug ?? "acessorios") as ProductCategorySlug;
   const icone = ICONE_POR_CATEGORIA[categorySlug] ?? "accessory";
 
@@ -151,7 +123,6 @@ function mapearProduto(row: LinhaProduto, plano: PlanoParcelamento): Product {
     emDestaque: row.em_destaque,
     parcelamentoHabilitado: row.parcelamento_habilitado,
     pixDescontoPercent: row.pix_desconto_percent ?? undefined,
-    planoParcelamento: plano,
   };
 }
 
@@ -179,7 +150,6 @@ function placeholderVariant(): ProductVariant {
  */
 export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCategorySlug): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   let query = supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
 
@@ -199,7 +169,7 @@ export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCat
     return [];
   }
 
-  const produtos = (destacados as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  const produtos = (destacados as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
 
   if (produtos.length >= limit) return produtos;
 
@@ -216,7 +186,7 @@ export async function getFeaturedProductsDb(limit = 8, categorySlug?: ProductCat
 
   const { data: recentes } = await complemento.order("created_at", { ascending: false }).limit(limit - produtos.length);
 
-  return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r, plano))];
+  return [...produtos, ...((recentes as unknown as LinhaProduto[]) ?? []).map((r) => mapearProduto(r))];
 }
 
 /**
@@ -251,7 +221,6 @@ function filtrarEOrdenarPorDesconto(produtos: Product[], limit: number): Product
  */
 export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   const { data, error } = await supabase
     .from("products")
@@ -265,13 +234,12 @@ export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
     return [];
   }
 
-  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r)), limit);
 }
 
 /** Fileira de ofertas restrita a uma categoria (ex: "Notebooks em Oferta"). */
 export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, limit = 5): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   const { data: categoria } = await supabase.from("categories").select("id").eq("slug", categorySlug).single();
   if (!categoria) return [];
@@ -288,7 +256,7 @@ export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, l
     return [];
   }
 
-  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r)), limit);
 }
 
 /**
@@ -298,7 +266,6 @@ export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, l
  */
 export async function getOfertasDoDiaDb(limit = 10): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   const { data: categoriaNotebooks } = await supabase.from("categories").select("id").eq("slug", "notebooks").single();
 
@@ -312,7 +279,7 @@ export async function getOfertasDoDiaDb(limit = 10): Promise<Product[]> {
     return [];
   }
 
-  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano)), limit);
+  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r)), limit);
 }
 
 /**
@@ -322,7 +289,6 @@ export async function getOfertasDoDiaDb(limit = 10): Promise<Product[]> {
  */
 export async function getSmartphonesComGarantiaDb(minimoMeses: number, limit = 5): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   const { data: categoria } = await supabase.from("categories").select("id").eq("slug", "celulares").single();
   if (!categoria) return [];
@@ -341,12 +307,11 @@ export async function getSmartphonesComGarantiaDb(minimoMeses: number, limit = 5
     return [];
   }
 
-  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
 }
 
 export async function getProductBySlugForMetadataDb(slug: string): Promise<Product | null> {
   const supabase = createAdminClient();
-  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -355,12 +320,11 @@ export async function getProductBySlugForMetadataDb(slug: string): Promise<Produ
     .single();
 
   if (error || !data) return null;
-  return mapearProduto(data as unknown as LinhaProduto, plano);
+  return mapearProduto(data as unknown as LinhaProduto);
 }
 
 export async function getProductBySlugDb(slug: string): Promise<Product | null> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -369,12 +333,11 @@ export async function getProductBySlugDb(slug: string): Promise<Product | null> 
     .single();
 
   if (error || !data) return null;
-  return mapearProduto(data as unknown as LinhaProduto, plano);
+  return mapearProduto(data as unknown as LinhaProduto);
 }
 
 export async function getProductsByCategoryDb(categorySlug: string): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
 
   let query = supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
 
@@ -390,7 +353,7 @@ export async function getProductsByCategoryDb(categorySlug: string): Promise<Pro
     return [];
   }
 
-  const produtos = (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  const produtos = (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
 
   if (categorySlug === "ofertas") {
     return produtos.filter((p) => p.variants.some((v) => v.compareAtCents && v.compareAtCents > v.priceCents));
@@ -400,7 +363,6 @@ export async function getProductsByCategoryDb(categorySlug: string): Promise<Pro
 
 export async function getRelatedProductsDb(product: Product, limit = 4): Promise<Product[]> {
   const supabase = await createClient();
-  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT_PRODUTO_COMPLETO)
@@ -409,7 +371,7 @@ export async function getRelatedProductsDb(product: Product, limit = 4): Promise
     .limit(limit);
 
   if (error) return [];
-  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
 }
 
 export type SugestaoCombo = {
@@ -603,12 +565,11 @@ export async function getCategoryPhotoDb(categorySlug: string): Promise<string |
 }
 export async function getAllActiveProductsForCache(): Promise<Product[]> {
   const supabase = createAdminClient();
-  const plano = await getSiteSettingsDb();
   const { data, error } = await supabase.from("products").select(SELECT_PRODUTO_COMPLETO).eq("ativo", true);
 
   if (error) {
     console.error("[products-db] getAllActiveProductsForCache:", error.message);
     return [];
   }
-  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r, plano));
+  return (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
 }

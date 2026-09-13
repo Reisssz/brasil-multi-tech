@@ -1,7 +1,7 @@
 import { Product } from "../types";
 
 /** Este catálogo é só mock (usado hoje só pelas avaliações de exemplo em Depoimentos) — o catálogo real vem de lib/data/products-db.ts. */
-type ProdutoMock = Omit<Product, "emDestaque" | "parcelamentoHabilitado" | "planoParcelamento">;
+type ProdutoMock = Omit<Product, "emDestaque" | "parcelamentoHabilitado">;
 
 function makeReviews(seed: string): Product["reviews"] {
   const pool = [
@@ -772,7 +772,6 @@ export const products: Product[] = produtosMock.map((p) => ({
   ...p,
   emDestaque: false,
   parcelamentoHabilitado: false,
-  planoParcelamento: { maxInstallments: 1 },
 }));
 
 export function getProductBySlug(slug: string) {

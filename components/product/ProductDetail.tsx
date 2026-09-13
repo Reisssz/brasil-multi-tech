@@ -116,7 +116,6 @@ export function ProductDetail({
             priceCents={activeVariant.priceCents}
             size="lg"
             parcelamentoHabilitado={product.parcelamentoHabilitado}
-            planoParcelamento={product.planoParcelamento}
             pixDescontoPercent={product.pixDescontoPercent}
           />
 

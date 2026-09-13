@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, melhorParcelaComJuros, getPixPriceCents } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { StarRating } from "../ui/StarRating";
@@ -13,9 +13,9 @@ export function ProductCard({ product }: { product: Product }) {
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);
   const priceCents = getMinPriceCents(product);
   const pixPriceCents = product.pixDescontoPercent ? getPixPriceCents(priceCents, product.pixDescontoPercent) : null;
-  const melhorParcela = product.parcelamentoHabilitado
-    ? melhorParcelaSemJuros(calcularParcelamento(priceCents, product.planoParcelamento))
-    : null;
+  const opcoesParcelamento = product.parcelamentoHabilitado ? calcularParcelamento(priceCents) : [];
+  const parcelaSemJuros = melhorParcelaSemJuros(opcoesParcelamento);
+  const parcelaComJuros = melhorParcelaComJuros(opcoesParcelamento);
 
   return (
     <Link
@@ -60,10 +60,10 @@ export function ProductCard({ product }: { product: Product }) {
               </span>
             )}
           </div>
-          {melhorParcela && (
+          {parcelaSemJuros && (
             <span className="text-[11px] text-muted tabular-nums">
-              ou até {melhorParcela.count}x de {formatBRL(melhorParcela.installmentCents)}
-              {melhorParcela.interestFree ? " sem juros" : " com juros"}
+              Até {parcelaSemJuros.count}x de {formatBRL(parcelaSemJuros.installmentCents)} s/ juros
+              {parcelaComJuros && <> ou {parcelaComJuros.count}x de {formatBRL(parcelaComJuros.installmentCents)} c/ juros</>}
             </span>
           )}
         </div>
