@@ -96,11 +96,18 @@ export function Hero({ banners }: { banners: Banner[] }) {
       />
 
       {/* Full-bleed: o banner ocupa a largura inteira do site. Os arquivos em
-          public/banners/banners-principal são exportados em 1920x384 (proporção
-          5:1) — o aspect abaixo casa com essa resolução, então a imagem é
-          exibida inteira, sem cortar topo/rodapé, em qualquer largura de tela. */}
+          public/banners/banners-principal são exportados em 1920x384
+          (proporção 5:1) — em telas grandes o aspect casa com essa
+          resolução e mostra a imagem inteira, sem cortar nada. No mobile,
+          5:1 vira uma tira de ~78px de altura (390px de largura) — dá pra
+          ver a imagem inteira, mas o texto do banner fica ilegível de tão
+          pequeno. Por isso usamos uma proporção mais alta só até `sm`,
+          aceitando cortar um pouco das laterais (object-cover, centralizado)
+          pra mostrar o miolo do banner num tamanho legível. O fix definitivo
+          é o time de design exportar uma versão vertical/quadrada própria
+          pra mobile — isso aqui é a melhor correção possível só com CSS. */}
       <div className="relative w-full">
-        <div className="relative aspect-5/1 overflow-hidden">
+        <div className="relative aspect-video sm:aspect-2/1 lg:aspect-5/1 overflow-hidden">
           {/* Rolagem lateral simples: um track em flex que desliza no eixo X.
               Sem zoom/ken burns e sem crossfade — só o deslocamento. */}
           <div
