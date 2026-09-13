@@ -5,7 +5,7 @@ import { SITE, whatsappLink } from "@/lib/config";
 export function Footer({ categories }: { categories: ProductCategory[] }) {
   return (
     <footer className="mt-16 bg-ink-2 text-ink-muted">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-12 grid grid-cols-2 md:grid-cols-5 gap-8 [&>div]:min-w-0">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-10 grid grid-cols-2 md:grid-cols-5 gap-8 [&>div]:min-w-0">
         <div className="col-span-2 md:col-span-2 flex flex-col gap-3">
           <span className="font-display text-lg font-bold text-ink-foreground">
             BRASIL <span className="text-brand">MULTI TECH</span>
@@ -49,9 +49,11 @@ export function Footer({ categories }: { categories: ProductCategory[] }) {
         <div className="flex flex-col gap-2.5 min-w-0">
           <span className="text-sm font-semibold text-ink-foreground mb-1">Institucional</span>
           <Link href="/sobre" className="text-sm hover:text-brand transition-colors">Sobre nós</Link>
+          <Link href="/confiavel" className="text-sm hover:text-brand transition-colors">Brasil Multi Tech é confiável?</Link>
           <Link href="/contato" className="text-sm hover:text-brand transition-colors">Contato</Link>
           <Link href="/ajuda" className="text-sm hover:text-brand transition-colors">Central de ajuda</Link>
           <Link href="/garantia" className="text-sm hover:text-brand transition-colors">Garantia e trocas</Link>
+          <Link href="/termos" className="text-sm hover:text-brand transition-colors">Termos e condições</Link>
           <Link href="/pedido/rastreio" className="text-sm hover:text-brand transition-colors">Rastrear pedido</Link>
 
           <span className="text-sm font-semibold text-ink-foreground mt-3 mb-1">Suporte ao cliente</span>

@@ -22,6 +22,7 @@ export async function enviarEmailContrato(params: {
   storageGb: number | null;
   color: string | null;
   imei: string | null;
+  imei2: string | null;
   valorCents: number;
   assinadoEm: string;
 }) {
@@ -30,7 +31,8 @@ export async function enviarEmailContrato(params: {
     return;
   }
 
-  const { paraEmail, nomeCliente, solicitacaoId, brand, model, storageGb, color, imei, valorCents, assinadoEm } = params;
+  const { paraEmail, nomeCliente, solicitacaoId, brand, model, storageGb, color, imei, imei2, valorCents, assinadoEm } = params;
+  const imeiTexto = imei ? `, IMEI <strong>${escapeHtml(imei)}</strong>${imei2 ? ` / <strong>${escapeHtml(imei2)}</strong>` : ""}` : "";
   const codigo = solicitacaoId.slice(0, 8).toUpperCase();
   const dataFormatada = new Date(assinadoEm).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" });
 
@@ -55,7 +57,7 @@ export async function enviarEmailContrato(params: {
                 <div style="font-size:13px;line-height:1.7;color:#3f434b;">
                   <p style="margin:0 0 10px 0;">
                     Pelo presente termo, <strong>${escapeHtml(nomeCliente)}</strong> declara ser o legítimo
-                    proprietário do aparelho <strong>${escapeHtml(brand)} ${escapeHtml(model)}${storageGb ? ` ${storageGb}GB` : ""}${color ? `, cor ${escapeHtml(color)}` : ""}</strong>${imei ? `, IMEI <strong>${escapeHtml(imei)}</strong>` : ""},
+                    proprietário do aparelho <strong>${escapeHtml(brand)} ${escapeHtml(model)}${storageGb ? ` ${storageGb}GB` : ""}${color ? `, cor ${escapeHtml(color)}` : ""}</strong>${imeiTexto},
                     e concorda em vendê-lo à Brasil Multi Tech pelo valor de <strong>${formatBRL(valorCents)}</strong>,
                     com pagamento em até 10 dias corridos após o recebimento e a conferência do aparelho.
                   </p>

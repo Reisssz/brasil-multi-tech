@@ -48,7 +48,7 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
       }`}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-        <div className="flex items-center gap-4 sm:gap-6 h-20">
+        <div className="flex items-center gap-4 sm:gap-6 h-16">
           <Logo />
 
           <div className="hidden md:block flex-1 max-w-xl">
@@ -58,17 +58,17 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Link
               href="/vender"
-              className="hidden md:inline-flex items-center justify-center rounded-full border border-brand/60 text-brand hover:bg-brand hover:text-brand-foreground px-4 h-11 text-sm font-semibold whitespace-nowrap transition-colors"
+              className="hidden md:inline-flex items-center justify-center rounded-full border border-brand/60 text-brand hover:bg-brand hover:text-brand-foreground px-4 h-10 text-sm font-semibold whitespace-nowrap transition-colors"
             >
               Venda seu aparelho
             </Link>
 
             <Link
               href="/conta"
-              className="inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
+              className="inline-flex items-center justify-center rounded-full w-10 h-10 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
               aria-label="Minha conta"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" />
               </svg>
@@ -76,10 +76,10 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
 
             <Link
               href="/carrinho"
-              className="relative inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
+              className="relative inline-flex items-center justify-center rounded-full w-10 h-10 border border-ink-border text-ink-foreground hover:border-brand hover:scale-105 active:scale-95 transition-all"
               aria-label="Carrinho"
             >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M3 4h2l2.4 12.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H6"
                   stroke="currentColor"
@@ -102,12 +102,12 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
             </Link>
 
             <button
-              className="lg:hidden inline-flex items-center justify-center rounded-full w-11 h-11 border border-ink-border text-ink-foreground"
+              className="lg:hidden inline-flex items-center justify-center rounded-full w-10 h-10 border border-ink-border text-ink-foreground"
               aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen((v) => !v)}
             >
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                 <path
                   d="M3 5h14"
                   stroke="currentColor"
@@ -139,7 +139,7 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
 
         {/* gap-4 fixo (sem variante maior em telas largas): com gap-5 os links
             estouravam a coluna por 8px e a barra de rolagem aparecia na navbar. */}
-        <nav className="hidden lg:flex items-center gap-4 h-11 -mt-1 border-t border-ink-border/70 text-sm overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="hidden lg:flex items-center gap-4 h-12.5 -mt-1 border-t border-ink-border/70 text-sm overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Link href="/categoria/ofertas" className="group flex items-center gap-1 shrink-0 whitespace-nowrap text-ink-foreground font-semibold">
             Categorias
             <Chevron />
@@ -224,7 +224,7 @@ export function Header({ categories }: { categories: ProductCategory[] }) {
             <Link
               href="/conta"
               onClick={() => setMobileOpen(false)}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand hover:bg-brand-dark text-brand-foreground h-11 text-sm font-semibold active:scale-95 transition-transform"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand hover:bg-brand-dark text-brand-foreground h-10 text-sm font-semibold active:scale-95 transition-transform"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                 <circle cx="12" cy="8" r="4" />

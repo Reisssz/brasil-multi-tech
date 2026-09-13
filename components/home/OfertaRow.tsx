@@ -26,7 +26,7 @@ export function OfertaRow({ titulo, subtitulo, produtos }: { titulo: string; sub
 
   return (
     <section className="bg-surface border-y border-border">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-12 sm:py-14">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-8 sm:py-10">
         <Reveal className="flex items-end justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{titulo}</h2>

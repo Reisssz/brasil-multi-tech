@@ -55,11 +55,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
         <label className="sr-only" htmlFor="site-search">
           Buscar produtos
         </label>
-        <div className="flex items-center gap-2 rounded-full bg-[#f0f1f4] border border-transparent focus-within:border-brand focus-within:bg-white transition-colors px-4 h-11">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="text-muted shrink-0">
-            <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M18 18l-4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+        <div className="flex items-center rounded-full bg-white border border-border focus-within:border-brand transition-colors overflow-hidden h-10">
           <input
             id="site-search"
             type="text"
@@ -71,8 +67,18 @@ export function SearchBar({ className = "" }: { className?: string }) {
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 120)}
             placeholder="Buscar iPhone, fone, carregador..."
-            className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
+            className="w-full min-w-0 h-full bg-transparent text-sm outline-none placeholder:text-muted pl-4 pr-2"
           />
+          <button
+            type="submit"
+            aria-label="Buscar"
+            className="flex items-center justify-center shrink-0 h-full aspect-square bg-brand hover:bg-brand-dark text-white transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M18 18l-4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
         </div>
       </form>
       {open && results.length > 0 && (

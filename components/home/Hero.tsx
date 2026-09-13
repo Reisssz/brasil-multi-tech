@@ -95,13 +95,12 @@ export function Hero({ banners }: { banners: Banner[] }) {
         className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[130%] aspect-square rounded-full bg-brand/15 blur-[90px]"
       />
 
-      {/* Full-bleed: o banner ocupa a largura inteira do site, sem coluna de
-          conteúdo. A proporção acompanha a das imagens (1456x819 = 16:9) pra
-          não sobrar vazio nas laterais nem cortar o topo/rodapé da arte — se
-          os banners forem reexportados numa proporção mais larga (ex: 21:9),
-          basta trocar o aspect abaixo pra reduzir a altura do hero. */}
+      {/* Full-bleed: o banner ocupa a largura inteira do site. Os arquivos em
+          public/banners/banners-principal são exportados em 1920x384 (proporção
+          5:1) — o aspect abaixo casa com essa resolução, então a imagem é
+          exibida inteira, sem cortar topo/rodapé, em qualquer largura de tela. */}
       <div className="relative w-full">
-        <div className="relative aspect-[16/9] overflow-hidden">
+        <div className="relative aspect-5/1 overflow-hidden">
           {/* Rolagem lateral simples: um track em flex que desliza no eixo X.
               Sem zoom/ken burns e sem crossfade — só o deslocamento. */}
           <div

@@ -33,6 +33,7 @@ export type TradeInRequestRow = {
   storage_gb: number | null;
   color: string | null;
   imei: string | null;
+  imei2: string | null;
   offer_type: OfferType | null;
   estimated_value_cents: number | null;
   final_value_cents: number | null;
@@ -73,6 +74,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const [color, setColor] = useState("");
   const [colorOutra, setColorOutra] = useState("");
   const [imei, setImei] = useState("");
+  const [imei2, setImei2] = useState("");
 
   const [linhasCatalogo, setLinhasCatalogo] = useState<{ brand: string; model: string; valor_cents: number }[]>([]);
   const catalogo: CatalogoPrecos = useMemo(() => buildCatalogo(linhasCatalogo), [linhasCatalogo]);
@@ -149,6 +151,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       if (draft.color) setColor(draft.color);
       if (draft.colorOutra) setColorOutra(draft.colorOutra);
       if (draft.imei) setImei(draft.imei);
+      if (draft.imei2) setImei2(draft.imei2);
       if (typeof draft.turnsOn === "boolean") setTurnsOn(draft.turnsOn);
       if (typeof draft.fazRecebeLigacoes === "boolean") setFazRecebeLigacoes(draft.fazRecebeLigacoes);
       if (typeof draft.wifiBluetoothOk === "boolean") setWifiBluetoothOk(draft.wifiBluetoothOk);
@@ -177,7 +180,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       sessionStorage.setItem(
         DRAFT_KEY,
         JSON.stringify({
-          category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei,
+          category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
           turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
           traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
           saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType,
@@ -188,7 +191,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       // localStorage/sessionStorage indisponível (modo privado etc) — sem problema
     }
   }, [
-    row, category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei,
+    row, category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
     turnsOn, fazRecebeLigacoes, wifiBluetoothOk,
     marcasDeUso, traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
     saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType, contactName, contactPhone, contactEmail,
@@ -232,6 +235,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const aparelhoValido = brandResolvido.trim().length > 1 && modelResolvido.trim().length > 1;
   const contatoValido = contactName.trim().length > 2 && contactPhone.trim().length >= 8 && contactEmail.includes("@");
   const imeiValido = REGEX_IMEI.test(imei);
+  // IMEI 2 é opcional (nem todo aparelho é dual chip) — só valida o formato se algo foi digitado.
+  const imei2Valido = imei2.length === 0 || REGEX_IMEI.test(imei2);
 
   // Assim que enviada, a solicitação já nasce aceita (o cliente escolhe a
   // modalidade e vê o valor ANTES de enviar) — não existe contraproposta,
@@ -253,6 +258,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       setErro("Informe um IMEI válido, com os 15 números.");
       return;
     }
+    if (!imei2Valido) {
+      setErro("O segundo IMEI precisa ter exatamente 15 números.");
+      return;
+    }
     if (!contatoValido) {
       setErro("Preencha seus dados de contato.");
       return;
@@ -265,6 +274,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         category,
         color: colorResolvido || undefined,
         imei,
+        imei2: imei2 || undefined,
         offerType,
         contactName,
         contactPhone,
@@ -640,20 +650,36 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
                 <h3 className="font-semibold text-foreground text-sm mb-2">IMEI do aparelho</h3>
                 <div className="mb-5">
-                  <Campo
-                    label="IMEI (15 números)"
-                    value={imei}
-                    onChange={(v) => setImei(v.replace(/\D/g, "").slice(0, 15))}
-                    placeholder="Ex: 123456789012345"
-                    inputMode="numeric"
-                  />
-                  <p className="text-xs text-muted mt-1">
-                    Para encontrar, digite <strong>*#06#</strong> no teclado do seu aparelho. Se ele tiver dois
-                    chips, informe apenas um dos códigos IMEI mostrados.
+                  <p className="text-xs text-muted mb-2">
+                    Para encontrar, digite <strong>*#06#</strong> no teclado do seu aparelho. Se ele for dual
+                    chip, vão aparecer dois códigos — informe os dois abaixo.
                   </p>
-                  {imei.length > 0 && !imeiValido && (
-                    <p className="text-xs text-red-600 mt-1">O IMEI precisa ter exatamente 15 números.</p>
-                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Campo
+                        label="IMEI 1 (15 números)"
+                        value={imei}
+                        onChange={(v) => setImei(v.replace(/\D/g, "").slice(0, 15))}
+                        placeholder="Ex: 123456789012345"
+                        inputMode="numeric"
+                      />
+                      {imei.length > 0 && !imeiValido && (
+                        <p className="text-xs text-red-600 mt-1">O IMEI precisa ter exatamente 15 números.</p>
+                      )}
+                    </div>
+                    <div>
+                      <Campo
+                        label="IMEI 2 (se dual chip)"
+                        value={imei2}
+                        onChange={(v) => setImei2(v.replace(/\D/g, "").slice(0, 15))}
+                        placeholder="Opcional"
+                        inputMode="numeric"
+                      />
+                      {imei2.length > 0 && !imei2Valido && (
+                        <p className="text-xs text-red-600 mt-1">O segundo IMEI precisa ter exatamente 15 números.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <h3 className="font-semibold text-foreground text-sm mb-2">Seus dados de contato</h3>
@@ -675,7 +701,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                     Voltar
                   </button>
                   <button
-                    disabled={enviando || !contatoValido || !imeiValido}
+                    disabled={enviando || !contatoValido || !imeiValido || !imei2Valido}
                     onClick={handleEnviarSolicitacao}
                     className="inline-flex h-11 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground px-6 text-sm font-bold transition-colors"
                   >
@@ -701,7 +727,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
               <p className="mb-2">
                 Pelo presente termo, eu declaro ser o legítimo proprietário do aparelho{" "}
                 <strong>{row.brand} {row.model}{row.storage_gb ? ` ${row.storage_gb}GB` : ""}{row.color ? `, cor ${row.color}` : ""}</strong>
-                {row.imei ? <>, IMEI <strong>{row.imei}</strong></> : ""},
+                {row.imei ? <>, IMEI <strong>{row.imei}</strong>{row.imei2 ? <> / <strong>{row.imei2}</strong></> : ""}</> : ""},
                 e concordo em vendê-lo à Brasil Multi Tech pelo valor de{" "}
                 <strong>{formatBRL(row.final_value_cents ?? row.estimated_value_cents ?? 0)}</strong>, com pagamento
                 em até 10 dias corridos.

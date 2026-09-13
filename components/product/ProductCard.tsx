@@ -51,7 +51,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
           <span className="text-[11px] text-muted">A partir de</span>
           <div className="flex items-baseline gap-1.5 flex-wrap">
-            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
+            <span className="font-display text-2xl font-bold tabular-nums text-brand">
               {formatBRL(pixPriceCents ?? priceCents)}
             </span>
             {pixPriceCents && (
@@ -68,8 +68,8 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        <span className="mt-2 inline-flex items-center justify-center gap-1.5 bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">
-          COMPRAR
+        <span className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand text-brand-foreground font-bold text-sm h-10 group-hover:bg-brand-dark transition-colors">
+          Comprar
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="transition-transform group-hover:translate-x-0.5">
             <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

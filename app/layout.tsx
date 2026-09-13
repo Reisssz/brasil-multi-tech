@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { PromoTopBar } from "@/components/layout/PromoTopBar";
 import { TopBar } from "@/components/layout/TopBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -64,6 +65,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <CartProvider>
+          <PromoTopBar />
           <TopBar />
           <Header categories={categories} />
           {/* Bloco, não flex: num container flex as margens automáticas do

@@ -47,7 +47,7 @@ export function PromoCarousel({ banners }: { banners: Banner[] }) {
   if (banners.length === 0) return null;
 
   return (
-    <section className="bg-surface border-y border-border py-12 sm:py-14">
+    <section className="bg-surface border-y border-border py-8 sm:py-10">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <Reveal className="flex items-center justify-between mb-6">
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Fique de olho</h2>

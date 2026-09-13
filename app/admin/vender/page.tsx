@@ -56,6 +56,12 @@ export default async function AdminVender() {
                 </p>
                 <p className="text-xs text-muted mt-0.5">
                   IMEI: <span className="font-mono">{s.imei ?? "—"}</span>
+                  {s.imei2 && (
+                    <>
+                      {" "}
+                      / <span className="font-mono">{s.imei2}</span>
+                    </>
+                  )}
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${CORES_STATUS[s.status] ?? ""}`}>

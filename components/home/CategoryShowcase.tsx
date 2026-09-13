@@ -15,7 +15,7 @@ export async function CategoryShowcase() {
   ]);
 
   return (
-    <section className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-14">
+    <section className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-8 sm:py-10">
       <Reveal className="flex items-end justify-between mb-6">
         <div>
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground">O que você prefere?</h2>
