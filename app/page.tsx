@@ -10,16 +10,16 @@ import { SmartphonesGarantia } from "@/components/home/SmartphonesGarantia";
 import { OfertasDoDia } from "@/components/home/OfertasDoDia";
 import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { TrustSection } from "@/components/home/TrustSection";
-import { listarBannersPromocionais, listarBannersPrincipais, getBannerGarantia } from "@/lib/banners";
+import { listarBannersPromocionais, listarBannersPrincipais, listarBannersMobile, getBannerGarantia } from "@/lib/banners";
 
 export default async function Home() {
-  const bannersPrincipais = await listarBannersPrincipais();
+  const [bannersPrincipais, bannersMobile] = await Promise.all([listarBannersPrincipais(), listarBannersMobile()]);
   const bannerGarantia = getBannerGarantia();
   const banners = [...listarBannersPromocionais(), ...(bannerGarantia ? [bannerGarantia] : [])];
 
   return (
     <>
-      <Hero banners={bannersPrincipais} />
+      <Hero banners={bannersPrincipais} bannersMobile={bannersMobile} />
       <QuickTiles />
       <FeaturedOffers />
       <PromoCarousel banners={banners} />

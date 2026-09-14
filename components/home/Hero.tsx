@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { Banner } from "@/lib/banners";
 
 const SLIDE_DURATION = 6000;
+/** Mesmo corte do Tailwind `sm` — abaixo disso troca pra imagem/proporção mobile. */
+const MOBILE_BREAKPOINT_PX = 640;
 
 /**
  * Header principal — carrossel de banners soltos pelo time de marketing em
@@ -12,8 +14,14 @@ const SLIDE_DURATION = 6000;
  * aqui como prop porque este componente precisa ser client (autoplay,
  * swipe, teclado). Só o banner com "venda"/"vendas" no nome do arquivo é
  * clicável, levando pra /vender — os demais são só imagem.
+ *
+ * `bannersMobile` (opcional, public/banners/banner-mobile) é pareado por
+ * ordem com `banners`: o 1º mobile substitui o 1º principal só abaixo de
+ * `sm`, o 2º substitui o 2º, e assim por diante. Slide sem par mobile usa a
+ * imagem principal normalmente (cortada pelo object-cover).
  */
-export function Hero({ banners }: { banners: Banner[] }) {
+export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; bannersMobile?: Banner[] }) {
+  const heroId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -82,16 +90,22 @@ export function Hero({ banners }: { banners: Banner[] }) {
 
   if (banners.length === 0) return null;
 
-  // Proporção real do conjunto de banners, lida no server a partir do
-  // primeiro arquivo com dimensões conhecidas (lib/banners.ts) — troque a
-  // resolução dos arquivos em public/banners/banners-principal que o Hero
-  // se ajusta sozinho, sem precisar editar este componente. minHeight/
-  // maxHeight seguram os dois extremos: banner ilegível de tão baixo no
-  // mobile, e banner gigante demais em telas ultrawide.
+  // Proporção real de cada conjunto, lida no server a partir do primeiro
+  // arquivo com dimensões conhecidas (lib/banners.ts) — troque a resolução
+  // dos arquivos que o Hero se ajusta sozinho, sem editar este componente.
+  // minHeight/maxHeight seguram os extremos: banner ilegível de tão baixo
+  // (sem versão mobile própria) e banner gigante em telas ultrawide.
   const referencia = banners.find((b) => b.width && b.height);
   const ratio = referencia?.width && referencia?.height ? referencia.width / referencia.height : undefined;
-  const boxStyle = ratio ? { aspectRatio: ratio, minHeight: 220, maxHeight: 560 } : undefined;
-  const boxClassName = `relative overflow-hidden ${ratio ? "" : "aspect-video sm:aspect-2/1 lg:aspect-5/1"}`;
+  const referenciaMobile = bannersMobile.find((b) => b.width && b.height);
+  const ratioMobile =
+    referenciaMobile?.width && referenciaMobile?.height ? referenciaMobile.width / referenciaMobile.height : undefined;
+
+  // aspect-ratio vai pro <style> (classe), não pro style inline — inline
+  // sempre vence regra de classe/media query, o que impediria a troca de
+  // proporção no breakpoint mobile de ter efeito nenhum.
+  const boxStyle = { minHeight: 220, maxHeight: 560 };
+  const boxClassName = `relative overflow-hidden hero-box-${heroId} ${ratio ? "" : "aspect-video sm:aspect-2/1 lg:aspect-5/1"}`;
 
   return (
     <section
@@ -105,6 +119,21 @@ export function Hero({ banners }: { banners: Banner[] }) {
         aria-hidden
         className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[130%] aspect-square rounded-full bg-brand/15 blur-[90px]"
       />
+
+      {/* Proporção real do banner via classe (não inline — inline venceria
+          a media query abaixo e a troca pro mobile nunca teria efeito).
+          Com ratioMobile, abaixo de MOBILE_BREAKPOINT_PX a caixa casa com a
+          imagem mobile que o <picture> já está exibindo nesse breakpoint. */}
+      {ratio && (
+        <style>{`
+          .hero-box-${heroId} { aspect-ratio: ${ratio}; }
+          ${
+            ratioMobile
+              ? `@media (max-width: ${MOBILE_BREAKPOINT_PX - 1}px) { .hero-box-${heroId} { aspect-ratio: ${ratioMobile}; } }`
+              : ""
+          }
+        `}</style>
+      )}
 
       {/* Full-bleed: o banner ocupa a largura inteira do site, na proporção
           real dos arquivos atuais (calculada acima, a partir das dimensões
@@ -121,15 +150,23 @@ export function Hero({ banners }: { banners: Banner[] }) {
             style={{ transform: `translateX(-${active * 100}%)` }}
           >
             {banners.map((banner, i) => {
+              // Par mobile do mesmo índice (1º com 1º, 2º com 2º...) — se
+              // não existir, o slide usa a imagem principal normalmente.
+              const bannerMobileCorrespondente = bannersMobile[i];
               const img = (
-                // eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design
-                <img
-                  src={banner.src}
-                  alt=""
-                  loading={i === 0 ? "eager" : "lazy"}
-                  fetchPriority={i === 0 ? "high" : "auto"}
-                  className="w-full h-full object-cover"
-                />
+                <picture>
+                  {bannerMobileCorrespondente && (
+                    <source media={`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`} srcSet={bannerMobileCorrespondente.src} />
+                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design */}
+                  <img
+                    src={banner.src}
+                    alt=""
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : "auto"}
+                    className="w-full h-full object-cover"
+                  />
+                </picture>
               );
 
               return (

@@ -4,6 +4,7 @@ import sharp from "sharp";
 
 const PASTA_BANNERS = path.join(process.cwd(), "public", "banners");
 const PASTA_BANNERS_PRINCIPAL = path.join(PASTA_BANNERS, "banners-principal");
+const PASTA_BANNERS_MOBILE = path.join(PASTA_BANNERS, "banner-mobile");
 const EXTENSOES = "png|jpe?g|webp|avif";
 
 export type Banner = { src: string; href: string | null; width?: number; height?: number };
@@ -45,21 +46,15 @@ export function getBannerGarantia(): Banner | null {
 }
 
 /**
- * Banners do header principal (Hero) — qualquer imagem solta em
- * public/banners/banners-principal, na ordem alfabética/natural do nome.
- * Imagens com "venda"/"vendas" no nome levam o cliente pra /vender; as
- * demais aparecem só como imagem, sem link.
- *
- * Lê a largura/altura reais de cada arquivo (sharp) pro Hero calcular a
- * proporção sozinho, em vez de um aspect-ratio fixo no código — assim o
- * time de marketing pode trocar a resolução dos banners sem precisar de
- * ajuste manual no CSS toda vez. Se a leitura falhar num arquivo (formato
- * corrompido/exótico), width/height ficam undefined e o Hero cai num
- * aspect-ratio padrão de segurança.
+ * Lê todas as imagens de uma pasta de banners do Hero, na ordem
+ * alfabética/natural do nome, com a largura/altura reais de cada arquivo
+ * (sharp) — o Hero usa isso pra calcular a proporção sozinho, em vez de um
+ * aspect-ratio fixo no código. Se a leitura de um arquivo falhar (formato
+ * corrompido/exótico), width/height ficam undefined pra esse item.
  */
-export async function listarBannersPrincipais(): Promise<Banner[]> {
+async function lerBannersDePasta(pasta: string, urlBase: string): Promise<Banner[]> {
   const regexImagem = new RegExp(`\\.(${EXTENSOES})$`, "i");
-  const nomes = listarArquivos(PASTA_BANNERS_PRINCIPAL)
+  const nomes = listarArquivos(pasta)
     .filter((nome) => regexImagem.test(nome))
     .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
 
@@ -68,18 +63,40 @@ export async function listarBannersPrincipais(): Promise<Banner[]> {
       let width: number | undefined;
       let height: number | undefined;
       try {
-        const metadata = await sharp(path.join(PASTA_BANNERS_PRINCIPAL, nome)).metadata();
+        const metadata = await sharp(path.join(pasta, nome)).metadata();
         width = metadata.width;
         height = metadata.height;
       } catch {
         // Sem dimensões — Hero usa o aspect-ratio padrão pra esse conjunto.
       }
       return {
-        src: `/banners/banners-principal/${encodeURIComponent(nome)}`,
+        src: `${urlBase}/${encodeURIComponent(nome)}`,
         href: hrefPorNome(nome),
         width,
         height,
       };
     })
   );
+}
+
+/**
+ * Banners do header principal (Hero) — qualquer imagem solta em
+ * public/banners/banners-principal. Imagens com "venda"/"vendas" no nome
+ * levam o cliente pra /vender; as demais aparecem só como imagem, sem
+ * link.
+ */
+export function listarBannersPrincipais(): Promise<Banner[]> {
+  return lerBannersDePasta(PASTA_BANNERS_PRINCIPAL, "/banners/banners-principal");
+}
+
+/**
+ * Versão mobile dos banners do Hero — opcional. Qualquer imagem solta em
+ * public/banners/banner-mobile é pareada por ORDEM com o banner principal
+ * de mesmo índice (1º com 1º, 2º com 2º...); se essa pasta estiver vazia
+ * ou tiver menos imagens que a principal, os banners que sobrarem usam a
+ * versão principal normalmente (cortada pelo object-cover). Pasta ainda
+ * não existir não é erro — listarArquivos já trata isso e retorna [].
+ */
+export function listarBannersMobile(): Promise<Banner[]> {
+  return lerBannersDePasta(PASTA_BANNERS_MOBILE, "/banners/banner-mobile");
 }
