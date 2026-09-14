@@ -215,9 +215,27 @@ function filtrarEOrdenarPorDesconto(produtos: Product[], limit: number): Product
 }
 
 /**
- * Fileira "Celulares em Oferta" da home — só iPhones com desconto ativo.
- * `brand` é texto livre no cadastro (sem normalização), por isso `ilike`
- * em vez de `eq`.
+ * Prioriza os produtos marcados manualmente como em_destaque e completa o
+ * restante da fileira com os que têm desconto ativo. É o que a tela de
+ * admin promete pro toggle "Produto em destaque" ("aparece nas vitrines de
+ * destaque da home... não precisa marcar nada além disso") — sem isso, as
+ * fileiras de oferta abaixo filtravam só por desconto e ignoravam o campo
+ * por completo, deixando o toggle sem efeito nenhum nelas.
+ */
+function priorizarDestaqueComFallbackDesconto(produtos: Product[], limit: number): Product[] {
+  const destacados = produtos.filter((p) => p.emDestaque).slice(0, limit);
+  if (destacados.length >= limit) return destacados;
+
+  const resto = produtos.filter((p) => !p.emDestaque);
+  const comDesconto = filtrarEOrdenarPorDesconto(resto, limit - destacados.length);
+  return [...destacados, ...comDesconto];
+}
+
+/**
+ * Fileira "Celulares em Oferta" da home — iPhones, priorizando os
+ * marcados como em_destaque e completando com desconto ativo. `brand` é
+ * texto livre no cadastro (sem normalização), por isso `ilike` em vez de
+ * `eq`.
  */
 export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
   const supabase = await createClient();
@@ -234,10 +252,15 @@ export async function getOfertasAppleDb(limit = 5): Promise<Product[]> {
     return [];
   }
 
-  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r)), limit);
+  const produtos = (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
+  return priorizarDestaqueComFallbackDesconto(produtos, limit);
 }
 
-/** Fileira de ofertas restrita a uma categoria (ex: "Notebooks em Oferta"). */
+/**
+ * Fileira de ofertas restrita a uma categoria (ex: "Notebooks em Oferta"),
+ * priorizando os marcados como em_destaque e completando com desconto
+ * ativo.
+ */
 export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, limit = 5): Promise<Product[]> {
   const supabase = await createClient();
 
@@ -256,7 +279,8 @@ export async function getOfertasCategoriaDb(categorySlug: ProductCategorySlug, l
     return [];
   }
 
-  return filtrarEOrdenarPorDesconto((data as unknown as LinhaProduto[]).map((r) => mapearProduto(r)), limit);
+  const produtos = (data as unknown as LinhaProduto[]).map((r) => mapearProduto(r));
+  return priorizarDestaqueComFallbackDesconto(produtos, limit);
 }
 
 /**

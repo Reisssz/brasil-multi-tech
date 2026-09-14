@@ -33,7 +33,7 @@ export function OfertaRow({ titulo, subtitulo, produtos }: { titulo: string; sub
             <p className="text-muted mt-1">{subtitulo}</p>
           </div>
         </Reveal>
-        <div className="flex flex-wrap justify-center -mx-2 sm:-mx-2.5 -mb-4 sm:-mb-5">
+        <div className="flex flex-wrap justify-start -mx-2 sm:-mx-2.5 -mb-4 sm:-mb-5">
           {produtos.map((p, i) => (
             <Reveal key={p.id} delay={(i % 5) * 60} className={ITEM}>
               <ProductCard product={p} />

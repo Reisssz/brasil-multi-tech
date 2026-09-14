@@ -235,8 +235,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const aparelhoValido = brandResolvido.trim().length > 1 && modelResolvido.trim().length > 1;
   const contatoValido = contactName.trim().length > 2 && contactPhone.trim().length >= 8 && contactEmail.includes("@");
   const imeiValido = REGEX_IMEI.test(imei);
-  // IMEI 2 é opcional (nem todo aparelho é dual chip) — só valida o formato se algo foi digitado.
-  const imei2Valido = imei2.length === 0 || REGEX_IMEI.test(imei2);
+  const imei2Valido = REGEX_IMEI.test(imei2);
 
   // Assim que enviada, a solicitação já nasce aceita (o cliente escolhe a
   // modalidade e vê o valor ANTES de enviar) — não existe contraproposta,
@@ -259,7 +258,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       return;
     }
     if (!imei2Valido) {
-      setErro("O segundo IMEI precisa ter exatamente 15 números.");
+      setErro("Informe o IMEI 2, com os 15 números.");
       return;
     }
     if (!contatoValido) {
@@ -274,7 +273,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         category,
         color: colorResolvido || undefined,
         imei,
-        imei2: imei2 || undefined,
+        imei2,
         offerType,
         contactName,
         contactPhone,
@@ -650,14 +649,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
                 <h3 className="font-semibold text-foreground text-sm mb-2">IMEI do aparelho</h3>
                 <div className="mb-5">
-                  <p className="text-xs text-muted mb-2">
-                    Para encontrar, digite <strong>*#06#</strong> no teclado do seu aparelho. Se ele for dual
-                    chip, vão aparecer dois códigos — informe os dois abaixo.
-                  </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Campo
-                        label="IMEI 1 (15 números)"
+                        label="IMEI 1"
                         value={imei}
                         onChange={(v) => setImei(v.replace(/\D/g, "").slice(0, 15))}
                         placeholder="Ex: 123456789012345"
@@ -669,10 +664,10 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                     </div>
                     <div>
                       <Campo
-                        label="IMEI 2 (se dual chip)"
+                        label="IMEI 2"
                         value={imei2}
                         onChange={(v) => setImei2(v.replace(/\D/g, "").slice(0, 15))}
-                        placeholder="Opcional"
+                        placeholder="Ex: 123456789012345"
                         inputMode="numeric"
                       />
                       {imei2.length > 0 && !imei2Valido && (
@@ -801,7 +796,6 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                 <input
                   type="file"
                   accept="image/*"
-                  capture="user"
                   className="sr-only"
                   onChange={(e) => selecionarFotoDocumento(e.target.files?.[0] ?? null)}
                 />

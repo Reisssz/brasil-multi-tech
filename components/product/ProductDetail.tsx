@@ -89,7 +89,11 @@ export function ProductDetail({
 
   return (
     <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12 py-8 pb-28 lg:pb-8">
-      <div className="grid lg:grid-cols-2 gap-10">
+      {/* Coluna da foto com largura fixa (não 50/50): num container largo,
+          metade da tela deixava a imagem "extremamente grande" — igual
+          reportado. Largura fixa mantém o tamanho padronizado entre
+          produtos e telas, e sobra mais espaço pra info sem rolagem. */}
+      <div className="grid lg:grid-cols-[440px_1fr] gap-8 lg:gap-10">
         <ProductGallery
           images={activeVariant.images as ProductIconKey[]}
           photos={activeVariant.photos}

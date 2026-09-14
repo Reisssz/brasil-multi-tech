@@ -4,7 +4,11 @@ import sharp from "sharp";
 
 const PASTA_BANNERS = path.join(process.cwd(), "public", "banners");
 const PASTA_BANNERS_PRINCIPAL = path.join(PASTA_BANNERS, "banners-principal");
-const PASTA_BANNERS_MOBILE = path.join(PASTA_BANNERS, "banner-mobile");
+// Aceita os dois nomes de pasta pra versão mobile — já apareceram arquivos
+// nos dois ("banner-mobile" e "banners-mobile") em momentos diferentes, e
+// travar num nome só faz o Hero voltar a cair no banner principal sempre
+// que alguém soltar os arquivos no outro. Usa o primeiro que tiver arquivo.
+const PASTAS_BANNERS_MOBILE = ["banner-mobile", "banners-mobile"].map((nome) => path.join(PASTA_BANNERS, nome));
 const EXTENSOES = "png|jpe?g|webp|avif";
 
 export type Banner = { src: string; href: string | null; width?: number; height?: number };
@@ -91,12 +95,18 @@ export function listarBannersPrincipais(): Promise<Banner[]> {
 
 /**
  * Versão mobile dos banners do Hero — opcional. Qualquer imagem solta em
- * public/banners/banner-mobile é pareada por ORDEM com o banner principal
- * de mesmo índice (1º com 1º, 2º com 2º...); se essa pasta estiver vazia
- * ou tiver menos imagens que a principal, os banners que sobrarem usam a
- * versão principal normalmente (cortada pelo object-cover). Pasta ainda
- * não existir não é erro — listarArquivos já trata isso e retorna [].
+ * public/banners/banner-mobile (ou banners-mobile — ver PASTAS_BANNERS_MOBILE)
+ * é pareada por ORDEM com o banner principal de mesmo índice (1º com 1º, 2º
+ * com 2º...); se essa pasta estiver vazia ou tiver menos imagens que a
+ * principal, os banners que sobrarem usam a versão principal normalmente
+ * (cortada pelo object-cover). Pasta não existir não é erro — listarArquivos
+ * já trata isso e retorna [].
  */
-export function listarBannersMobile(): Promise<Banner[]> {
-  return lerBannersDePasta(PASTA_BANNERS_MOBILE, "/banners/banner-mobile");
+export async function listarBannersMobile(): Promise<Banner[]> {
+  for (const pasta of PASTAS_BANNERS_MOBILE) {
+    if (listarArquivos(pasta).length > 0) {
+      return lerBannersDePasta(pasta, `/banners/${path.basename(pasta)}`);
+    }
+  }
+  return [];
 }

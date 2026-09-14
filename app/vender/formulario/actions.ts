@@ -11,7 +11,7 @@ type EnviarSolicitacaoInput = RespostasEstimativa & {
   category: string;
   color?: string;
   imei: string;
-  imei2?: string;
+  imei2: string;
   offerType: OfferType;
   contactName: string;
   contactPhone: string;
@@ -38,14 +38,13 @@ export async function enviarSolicitacao(
     return { error: "login_required" };
   }
 
-  // Item 03: IMEI obrigatório, validado no servidor — nunca confiamos só na
-  // checagem do formulário no navegador.
+  // Item 03: IMEI 1 e IMEI 2 obrigatórios, validados no servidor — nunca
+  // confiamos só na checagem do formulário no navegador.
   if (!REGEX_IMEI.test(input.imei)) {
     return { error: "Informe um IMEI válido, com 15 números." };
   }
-  // IMEI 2 é opcional (aparelhos dual chip têm dois) — só exige o formato certo se veio preenchido.
-  if (input.imei2 && !REGEX_IMEI.test(input.imei2)) {
-    return { error: "O segundo IMEI precisa ter 15 números." };
+  if (!REGEX_IMEI.test(input.imei2)) {
+    return { error: "Informe o IMEI 2, com 15 números." };
   }
 
   const catalogo = await buscarCatalogoPrecos();
@@ -69,7 +68,7 @@ export async function enviarSolicitacao(
       storage_gb: input.storageGb ?? null,
       color: input.color ?? null,
       imei: input.imei,
-      imei2: input.imei2 ?? null,
+      imei2: input.imei2,
       turns_on: input.turnsOn,
       faz_recebe_ligacoes: input.fazRecebeLigacoes,
       wifi_bluetooth_ok: input.wifiBluetoothOk,

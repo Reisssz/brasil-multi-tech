@@ -15,7 +15,8 @@ const MOBILE_BREAKPOINT_PX = 640;
  * swipe, teclado). Só o banner com "venda"/"vendas" no nome do arquivo é
  * clicável, levando pra /vender — os demais são só imagem.
  *
- * `bannersMobile` (opcional, public/banners/banner-mobile) é pareado por
+ * `bannersMobile` (opcional, public/banners/banner-mobile ou banners-mobile
+ * — ver lib/banners.ts) é pareado por
  * ordem com `banners`: o 1º mobile substitui o 1º principal só abaixo de
  * `sm`, o 2º substitui o 2º, e assim por diante. Slide sem par mobile usa a
  * imagem principal normalmente (cortada pelo object-cover).
