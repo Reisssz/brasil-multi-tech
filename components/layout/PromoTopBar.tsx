@@ -8,11 +8,11 @@ import { useEffect, useState } from "react";
  * políticas reais do site (nada de campanha/desconto inventado) — ajuste
  * aqui se alguma dessas condições mudar.
  */
-const MENSAGENS: React.ReactNode[] = [
-  <>Comemore com a gente: <b className="font-bold">ofertas especiais em todo o site</b></>,
-  <>8% de desconto à vista no <b className="font-bold">Pix</b> em todos os produtos</>,
-  <>Frete grátis nas compras acima de <b className="font-bold">R$ 1.300</b></>,
-  <>Parcele em até <b className="font-bold">18x</b> no cartão de crédito</>,
+const MENSAGENS: string[] = [
+  "Comemore com a gente: ofertas especiais em todo o site",
+  "8% de desconto à vista no Pix em todos os produtos",
+  "Frete grátis nas compras acima de R$ 1.300",
+  "Parcele em até 18x no cartão de crédito",
 ];
 
 export function PromoTopBar() {
@@ -41,7 +41,7 @@ export function PromoTopBar() {
           5 ANOS BRASIL MULTI TECH
         </span>
         <span className="flex-1 flex items-center justify-center px-4 min-w-0 overflow-hidden relative">
-          <span key={index} className="animate-fade-in-fast font-normal whitespace-nowrap truncate">
+          <span key={index} className="animate-fade-in-fast whitespace-nowrap truncate">
             {MENSAGENS[index]}
           </span>
         </span>
