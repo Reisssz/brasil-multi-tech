@@ -12,8 +12,8 @@ import { PromoCarousel } from "@/components/home/PromoCarousel";
 import { TrustSection } from "@/components/home/TrustSection";
 import { listarBannersPromocionais, listarBannersPrincipais, getBannerGarantia } from "@/lib/banners";
 
-export default function Home() {
-  const bannersPrincipais = listarBannersPrincipais();
+export default async function Home() {
+  const bannersPrincipais = await listarBannersPrincipais();
   const bannerGarantia = getBannerGarantia();
   const banners = [...listarBannersPromocionais(), ...(bannerGarantia ? [bannerGarantia] : [])];
 

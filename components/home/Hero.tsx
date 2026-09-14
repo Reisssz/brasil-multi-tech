@@ -82,6 +82,17 @@ export function Hero({ banners }: { banners: Banner[] }) {
 
   if (banners.length === 0) return null;
 
+  // Proporção real do conjunto de banners, lida no server a partir do
+  // primeiro arquivo com dimensões conhecidas (lib/banners.ts) — troque a
+  // resolução dos arquivos em public/banners/banners-principal que o Hero
+  // se ajusta sozinho, sem precisar editar este componente. minHeight/
+  // maxHeight seguram os dois extremos: banner ilegível de tão baixo no
+  // mobile, e banner gigante demais em telas ultrawide.
+  const referencia = banners.find((b) => b.width && b.height);
+  const ratio = referencia?.width && referencia?.height ? referencia.width / referencia.height : undefined;
+  const boxStyle = ratio ? { aspectRatio: ratio, minHeight: 220, maxHeight: 560 } : undefined;
+  const boxClassName = `relative overflow-hidden ${ratio ? "" : "aspect-video sm:aspect-2/1 lg:aspect-5/1"}`;
+
   return (
     <section
       className="relative bg-ink overflow-hidden"
@@ -95,19 +106,14 @@ export function Hero({ banners }: { banners: Banner[] }) {
         className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[130%] aspect-square rounded-full bg-brand/15 blur-[90px]"
       />
 
-      {/* Full-bleed: o banner ocupa a largura inteira do site. Os arquivos em
-          public/banners/banners-principal são exportados em 1920x384
-          (proporção 5:1) — em telas grandes o aspect casa com essa
-          resolução e mostra a imagem inteira, sem cortar nada. No mobile,
-          5:1 vira uma tira de ~78px de altura (390px de largura) — dá pra
-          ver a imagem inteira, mas o texto do banner fica ilegível de tão
-          pequeno. Por isso usamos uma proporção mais alta só até `sm`,
-          aceitando cortar um pouco das laterais (object-cover, centralizado)
-          pra mostrar o miolo do banner num tamanho legível. O fix definitivo
-          é o time de design exportar uma versão vertical/quadrada própria
-          pra mobile — isso aqui é a melhor correção possível só com CSS. */}
+      {/* Full-bleed: o banner ocupa a largura inteira do site, na proporção
+          real dos arquivos atuais (calculada acima, a partir das dimensões
+          lidas no server). minHeight evita banner ilegível no mobile quando
+          o arquivo é bem largo/baixo; maxHeight evita banner gigante em
+          telas ultrawide. Sem dimensões conhecidas, cai no aspect-ratio de
+          segurança (className condicional em boxClassName). */}
       <div className="relative w-full">
-        <div className="relative aspect-video sm:aspect-2/1 lg:aspect-5/1 overflow-hidden">
+        <div className={boxClassName} style={boxStyle}>
           {/* Rolagem lateral simples: um track em flex que desliza no eixo X.
               Sem zoom/ken burns e sem crossfade — só o deslocamento. */}
           <div
