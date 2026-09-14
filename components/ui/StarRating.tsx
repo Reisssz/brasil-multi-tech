@@ -5,9 +5,10 @@ export function StarRating({
 }: {
   rating: number;
   reviewCount?: number;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 }) {
-  const starSize = size === "sm" ? 14 : 18;
+  const starSize = size === "xs" ? 11 : size === "sm" ? 14 : 18;
+  const textClass = size === "xs" ? "text-xs" : "text-sm";
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex items-center" aria-hidden>
@@ -27,9 +28,9 @@ export function StarRating({
           );
         })}
       </div>
-      <span className="text-sm font-medium text-foreground tabular-nums">{rating.toFixed(1)}</span>
+      <span className={`${textClass} font-medium text-foreground tabular-nums`}>{rating.toFixed(1)}</span>
       {reviewCount !== undefined && (
-        <span className="text-sm text-muted">({reviewCount.toLocaleString("pt-BR")})</span>
+        <span className={`${textClass} text-muted`}>({reviewCount.toLocaleString("pt-BR")})</span>
       )}
     </div>
   );

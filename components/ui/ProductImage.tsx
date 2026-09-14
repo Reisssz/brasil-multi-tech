@@ -82,6 +82,7 @@ export function ProductImage({
   accent = "var(--brand)",
   tint = "neutral",
   className = "",
+  fit = "contain",
 }: {
   icon: ProductIconKey;
   /** Real product photo path, e.g. `/products/<variant-id>.jpg`. Falls back to the SVG icon if missing/404. */
@@ -89,6 +90,15 @@ export function ProductImage({
   accent?: string;
   tint?: keyof typeof tints;
   className?: string;
+  /**
+   * "contain" (padrão) mostra a foto inteira, sem cortar — usado na página
+   * do produto, onde o cliente quer ver o aparelho por completo. "cover"
+   * preenche o quadrado todo, cortando o excesso: várias fotos vêm com
+   * bastante fundo branco já embutido na própria imagem, e isso não dá pra
+   * resolver só com padding — usado nos cards da vitrine, pra evitar card
+   * com muito espaço em branco ao redor de um produto pequeno no centro.
+   */
+  fit?: "contain" | "cover";
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const render = icons[icon] ?? icons.accessory;
@@ -104,7 +114,9 @@ export function ProductImage({
           src={photoSrc}
           alt=""
           onError={() => setPhotoFailed(true)}
-          className="w-full h-full object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-110"
+          className={`w-full h-full transition-transform duration-300 ease-out group-hover:scale-110 ${
+            fit === "cover" ? "object-cover" : "object-contain p-2"
+          }`}
         />
       ) : (
         <div className="transition-transform duration-300 ease-out group-hover:scale-110 flex items-center justify-center w-full h-full">
