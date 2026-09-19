@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Product, ProductVariant } from "@/lib/types";
+import { Product, ProductCondition, ProductVariant } from "@/lib/types";
 import { ProductIconKey } from "../ui/ProductImage";
 import { ProductGallery } from "./ProductGallery";
 import { StarRating } from "../ui/StarRating";
@@ -12,7 +12,7 @@ import { PriceBlock } from "../ui/PriceBlock";
 import { ProductCard } from "./ProductCard";
 import { useCart } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
-import { CONDITION_LABELS, isSeminovo, sortByCondition } from "@/lib/conditions";
+import { CONDITION_DETAILS, CONDITION_LABELS, isSeminovo, sortByCondition } from "@/lib/conditions";
 import { ShippingEstimator } from "./ShippingEstimator";
 
 const CATEGORY_LABELS: Record<Product["category"], string> = {
@@ -217,6 +217,7 @@ export function ProductDetail({
                   );
                 })}
               </div>
+              <EntenderCondicoes conditions={conditions} selected={selectedCondition} onSelect={setSelectedCondition} />
             </div>
           )}
 
@@ -372,5 +373,151 @@ export function ProductDetail({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Acordeão "Entender condições": explica o que muda entre os selos de
+ * estado (tela/lateral/traseira/bateria/acessórios), com abas pra ver o
+ * detalhe de cada condição sem precisar trocar a variante selecionada pra
+ * compra — só quando o cliente clica numa aba aqui é que ela também vira a
+ * condição selecionada acima (mesmo comportamento do seletor principal).
+ */
+function EntenderCondicoes({
+  conditions,
+  selected,
+  onSelect,
+}: {
+  conditions: ProductCondition[];
+  selected: ProductCondition;
+  onSelect: (c: ProductCondition) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const detalhes = CONDITION_DETAILS[selected];
+
+  const cartas = [
+    { titulo: "Tela", texto: detalhes.tela, icone: IconeTela },
+    { titulo: "Lateral", texto: detalhes.lateral, icone: IconeLateral },
+    { titulo: "Traseira", texto: detalhes.traseira, icone: IconeTraseira },
+    { titulo: "Bateria", texto: detalhes.bateria, icone: IconeBateria },
+    { titulo: "Acessórios", texto: detalhes.acessorios, icone: IconeAcessorios },
+  ];
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex items-center gap-1.5 text-sm font-semibold text-brand hover:text-brand-dark transition-colors"
+        aria-expanded={aberto}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          className={`shrink-0 transition-transform ${aberto ? "rotate-180" : ""}`}
+        >
+          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Entender condições
+      </button>
+
+      {aberto && (
+        <div className="mt-3 rounded-xl border border-border bg-[#f7f8fa] p-4 flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Conheça a condição estética do aparelho:</p>
+            <p className="text-xs text-muted mt-1 leading-relaxed">
+              Cada selo indica o estado de conservação real do aparelho, verificado por nossa equipe técnica antes
+              do anúncio. Escolha uma condição abaixo pra ver o que esperar de cada uma.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {conditions.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onSelect(c)}
+                className={`rounded-lg border px-3 h-8 text-xs font-semibold transition-colors ${
+                  selected === c
+                    ? "border-brand text-brand bg-brand-light"
+                    : "border-border text-foreground bg-surface hover:border-muted"
+                }`}
+              >
+                {CONDITION_LABELS[c]}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-2.5">
+            {cartas.map(({ titulo, texto, icone: Icone }) => (
+              <div key={titulo} className="flex items-start gap-2.5 rounded-lg bg-surface border border-border p-2.5">
+                <Icone />
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{titulo}</p>
+                  <p className="text-xs text-muted leading-snug">{texto}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs text-muted">
+            Imagens ilustrativas. Fotos reais do aparelho ficam na galeria acima.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IconeTela() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-brand mt-0.5">
+      <rect x="4" y="2.5" width="12" height="15" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8.5 15.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconeLateral() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-brand mt-0.5">
+      <rect x="7" y="2.5" width="6" height="15" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M10 5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconeTraseira() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-brand mt-0.5">
+      <rect x="4" y="2.5" width="12" height="15" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="10" cy="6" r="1.4" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function IconeBateria() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-brand mt-0.5">
+      <rect x="2.5" y="6" width="14" height="8" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M16.5 8.5h1.4v3h-1.4" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+function IconeAcessorios() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 text-brand mt-0.5">
+      <path
+        d="M6 10a4 4 0 0 1 4-4h4M14 10a4 4 0 0 1-4 4H6"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <circle cx="6" cy="10" r="1.6" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="14" cy="10" r="1.6" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
   );
 }
