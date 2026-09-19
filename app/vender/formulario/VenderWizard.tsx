@@ -135,11 +135,11 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
     if (row || restauradoRef.current) return;
     restauradoRef.current = true;
     try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
+      const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw);
       // Hidratação única de um rascunho salvo antes do redirecionamento pro
-      // login — não dá pra ler sessionStorage durante o render (quebra no
+      // login — não dá pra ler localStorage durante o render (quebra no
       // SSR), então precisa ser aqui mesmo, guardado pelo ref acima.
       /* eslint-disable react-hooks/set-state-in-effect */
       if (draft.category) setCategory(draft.category);
@@ -177,7 +177,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   useEffect(() => {
     if (row) return;
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         DRAFT_KEY,
         JSON.stringify({
           category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
@@ -188,7 +188,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         })
       );
     } catch {
-      // localStorage/sessionStorage indisponível (modo privado etc) — sem problema
+      // localStorage indisponível (modo privado etc) — sem problema
     }
   }, [
     row, category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
@@ -233,7 +233,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   );
 
   const aparelhoValido = brandResolvido.trim().length > 1 && modelResolvido.trim().length > 1;
-  const contatoValido = contactName.trim().length > 2 && contactPhone.trim().length >= 8 && contactEmail.includes("@");
+  const contatoValido =
+    contactName.trim().length > 2 && contactPhone.trim().length >= 8 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const imeiValido = REGEX_IMEI.test(imei);
   const imei2Valido = REGEX_IMEI.test(imei2);
 
@@ -290,7 +291,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       }
 
       try {
-        sessionStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(DRAFT_KEY);
       } catch {
         // ok ignorar
       }

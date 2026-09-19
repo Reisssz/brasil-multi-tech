@@ -16,6 +16,33 @@ async function verificarAdmin(supabase: Awaited<ReturnType<typeof createClient>>
 export type EstadoBanner = { erro?: string } | null;
 
 /**
+ * Gera uma URL de upload assinada pro bucket "banners" (Storage) — o
+ * navegador sobe o arquivo direto pra essa URL, sem passar o binário pela
+ * Server Action (upload de arquivo binário via Server Action quebra em
+ * produção nesta hospedagem — mesmo motivo documentado em
+ * app/admin/produtos/FormularioProduto.tsx). Como é uma URL ASSINADA pelo
+ * client admin, o upload funciona mesmo sem nenhuma policy de RLS extra
+ * configurada em storage.objects pro usuário logado.
+ */
+export async function criarUrlUploadBanner(nomeArquivo: string): Promise<{ path?: string; token?: string; erro?: string }> {
+  const supabase = await createClient();
+  if (!(await verificarAdmin(supabase))) return { erro: "Acesso negado." };
+
+  const extensao = nomeArquivo.split(".").pop() || "webp";
+  const caminho = `principal/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensao}`;
+
+  const supabaseAdmin = createAdminClient();
+  const { data, error } = await supabaseAdmin.storage.from("banners").createSignedUploadUrl(caminho);
+
+  if (error || !data) {
+    console.error("[admin/banners] falha ao gerar URL de upload:", error?.message);
+    return { erro: 'Não foi possível preparar o upload. Confira se o bucket "banners" existe no Storage.' };
+  }
+
+  return { path: data.path, token: data.token };
+}
+
+/**
  * Lê/grava sempre com o client admin (service role) — a tabela
  * banners_principais é nova neste projeto e ainda não tem policy de RLS
  * própria configurada no Supabase; o controle de acesso aqui é 100% feito

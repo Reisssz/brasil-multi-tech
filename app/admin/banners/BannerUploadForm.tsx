@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { adicionarBannerPrincipal, type EstadoBanner } from "./actions";
+import { adicionarBannerPrincipal, criarUrlUploadBanner, type EstadoBanner } from "./actions";
 
 type ImagemEnviada = { url: string; width: number; height: number } | null;
 
@@ -45,22 +45,26 @@ export function BannerUploadForm() {
     setEnviando(tipo);
     try {
       const { width, height } = await medirImagem(arquivo);
-      const supabase = createClient();
-      const extensao = arquivo.name.split(".").pop();
-      const caminho = `principal/${tipo}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${extensao}`;
 
-      const { error } = await supabase.storage.from("banners").upload(caminho, arquivo, {
-        cacheControl: "31536000",
-        upsert: false,
-      });
-
-      if (error) {
-        console.error("[admin/banners] falha no upload:", error.message);
-        setErroUpload("Não foi possível enviar a imagem. Confira se o bucket \"banners\" existe no Storage.");
+      // URL de upload assinada gerada no servidor (client admin) — o
+      // arquivo em si vai direto do navegador pro Storage, sem passar pela
+      // Server Action, e sem depender de policy de RLS pro usuário logado.
+      const { path, token, erro } = await criarUrlUploadBanner(arquivo.name);
+      if (erro || !path || !token) {
+        setErroUpload(erro ?? "Não foi possível preparar o upload.");
         return;
       }
 
-      const { data } = supabase.storage.from("banners").getPublicUrl(caminho);
+      const supabase = createClient();
+      const { error } = await supabase.storage.from("banners").uploadToSignedUrl(path, token, arquivo);
+
+      if (error) {
+        console.error("[admin/banners] falha no upload:", error.message);
+        setErroUpload("Não foi possível enviar a imagem. Tente novamente.");
+        return;
+      }
+
+      const { data } = supabase.storage.from("banners").getPublicUrl(path);
       const resultado = { url: data.publicUrl, width, height };
       if (tipo === "desktop") setDesktop(resultado);
       else setMobile(resultado);

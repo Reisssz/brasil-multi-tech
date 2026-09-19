@@ -89,12 +89,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  const { data: pedidoAtual } = await supabase
-    .from("orders")
-    .select("status, user_id, items, endereco_entrega")
-    .eq("id", orderId)
-    .single();
-
   await supabase.from("payments").upsert(
     {
       order_id: orderId,
@@ -115,20 +109,34 @@ export async function POST(request: NextRequest) {
     // calcula juros (não temos acesso à taxa de cada emissor), então é só
     // aqui, com o dado que vem direto da API de pagamentos, que o pedido
     // fica alinhado com o que o cliente realmente pagou.
-    await supabase
-      .from("orders")
-      .update({
-        status: statusPedido,
-        ...(pagamento.transaction_amount != null ? { total: pagamento.transaction_amount } : {}),
-        ...(pagamento.installments != null ? { parcelas: pagamento.installments } : {}),
-      })
-      .eq("id", orderId);
+    const camposAtualizacao = {
+      status: statusPedido,
+      ...(pagamento.transaction_amount != null ? { total: pagamento.transaction_amount } : {}),
+      ...(pagamento.installments != null ? { parcelas: pagamento.installments } : {}),
+    };
 
-    // Só baixa estoque na PRIMEIRA vez que o pedido vira "paid" — o Mercado
-    // Pago pode reenviar o mesmo webhook várias vezes, e sem essa checagem
-    // o estoque descontaria em dobro/triplo a cada reentrega.
-    if (statusPedido === "paid" && pedidoAtual?.status !== "paid") {
-      const itens = (pedidoAtual?.items ?? []) as Array<{
+    if (statusPedido !== "paid") {
+      await supabase.from("orders").update(camposAtualizacao).eq("id", orderId);
+      return NextResponse.json({ received: true });
+    }
+
+    // Atualização condicional (UPDATE ... WHERE status <> 'paid') em vez de
+    // ler o status antes e decidir depois: ler-e-decidir tem race condition
+    // — se dois webhooks (reenvio do Mercado Pago) chegam quase juntos,
+    // ambos podem ler "pending" antes que qualquer um grave "paid", e os
+    // dois baixariam estoque. Com o filtro no próprio UPDATE, só a chamada
+    // que efetivamente conseguir mudar o status de "não pago" pra "paid"
+    // recebe a linha de volta — só ela baixa estoque e manda e-mail.
+    const { data: pedidoAtualizado } = await supabase
+      .from("orders")
+      .update(camposAtualizacao)
+      .eq("id", orderId)
+      .neq("status", "paid")
+      .select("user_id, items, endereco_entrega")
+      .maybeSingle();
+
+    if (pedidoAtualizado) {
+      const itens = (pedidoAtualizado.items ?? []) as Array<{
         variantId: string;
         quantidade: number;
         nome: string;
@@ -139,7 +147,7 @@ export async function POST(request: NextRequest) {
       }
 
       await supabase.from("activity_logs").insert({
-        user_id: pedidoAtual?.user_id ?? null,
+        user_id: pedidoAtualizado.user_id ?? null,
         event_type: "order_paid",
         metadata: { pedidoId: orderId, valor: pagamento.transaction_amount },
       });
@@ -147,9 +155,9 @@ export async function POST(request: NextRequest) {
       // E-mail de confirmação com o número do pedido e botão de rastreio.
       // Best-effort: uma falha aqui não pode derrubar o webhook, o pedido
       // já foi confirmado de verdade no banco.
-      if (pedidoAtual?.user_id) {
-        const { data: usuario } = await supabase.auth.admin.getUserById(pedidoAtual.user_id);
-        const enderecoEntrega = pedidoAtual.endereco_entrega as { nome?: string } | null;
+      if (pedidoAtualizado.user_id) {
+        const { data: usuario } = await supabase.auth.admin.getUserById(pedidoAtualizado.user_id);
+        const enderecoEntrega = pedidoAtualizado.endereco_entrega as { nome?: string } | null;
         if (usuario?.user?.email) {
           await enviarEmailPedidoConfirmado({
             paraEmail: usuario.user.email,
