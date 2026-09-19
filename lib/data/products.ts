@@ -797,7 +797,8 @@ export function getMinPriceCents(product: Product) {
   return Math.min(...product.variants.map((v) => v.priceCents));
 }
 
-function resolvePhotoSrc(filenameOuUrl: string): string {
+/** Foto já vem como URL do Supabase Storage ou como nome de arquivo local em /public/products/. */
+export function resolvePhotoSrc(filenameOuUrl: string): string {
   return /^https?:\/\//.test(filenameOuUrl) ? filenameOuUrl : `/products/${filenameOuUrl}`;
 }
 

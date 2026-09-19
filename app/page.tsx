@@ -13,9 +13,13 @@ import { TrustSection } from "@/components/home/TrustSection";
 import { listarBannersPromocionais, listarBannersPrincipais, listarBannersMobile, getBannerGarantia } from "@/lib/banners";
 
 export default async function Home() {
-  const [bannersPrincipais, bannersMobile] = await Promise.all([listarBannersPrincipais(), listarBannersMobile()]);
-  const bannerGarantia = getBannerGarantia();
-  const banners = [...listarBannersPromocionais(), ...(bannerGarantia ? [bannerGarantia] : [])];
+  const [bannersPrincipais, bannersMobile, bannersPromocionais, bannerGarantia] = await Promise.all([
+    listarBannersPrincipais(),
+    listarBannersMobile(),
+    listarBannersPromocionais(),
+    getBannerGarantia(),
+  ]);
+  const banners = [...bannersPromocionais, ...(bannerGarantia ? [bannerGarantia] : [])];
 
   return (
     <>

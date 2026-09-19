@@ -23,6 +23,7 @@ export default async function LayoutAdmin({ children }: { children: React.ReactN
         <nav className="flex flex-col gap-1 text-sm">
           <Link href="/admin" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Visão geral</Link>
           <Link href="/admin/produtos" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Produtos</Link>
+          <Link href="/admin/banners" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Banner principal</Link>
           <Link href="/admin/categorias" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Categorias</Link>
           <Link href="/admin/cupons" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Cupons</Link>
           <Link href="/admin/configuracoes" className="rounded-lg px-3 py-2 hover:bg-[#f7f8fa]">Parcelamento</Link>

@@ -77,6 +77,10 @@ export function PromoCarousel({ banners }: { banners: Banner[] }) {
             {banners.map((banner) => {
               const wrapperClassName =
                 "group shrink-0 snap-start w-[85%] sm:w-[calc(50%_-_10px)] lg:w-[calc(33.333%_-_14px)] overflow-hidden";
+              // Proporção real do arquivo (lida no server via sharp) evita cortar/distorcer
+              // banners que não vierem exatamente 16:9 — só cai no 16:9 fixo sem essa info.
+              const ratioStyle: React.CSSProperties =
+                banner.width && banner.height ? { aspectRatio: `${banner.width} / ${banner.height}` } : {};
               const img = (
                 // eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design
                 <img
@@ -87,11 +91,15 @@ export function PromoCarousel({ banners }: { banners: Banner[] }) {
               );
               return banner.href ? (
                 <Link key={banner.src} href={banner.href} className={`${wrapperClassName} cursor-pointer`}>
-                  <div className="aspect-[16/9]">{img}</div>
+                  <div className={ratioStyle.aspectRatio ? undefined : "aspect-video"} style={ratioStyle}>
+                    {img}
+                  </div>
                 </Link>
               ) : (
                 <div key={banner.src} className={wrapperClassName}>
-                  <div className="aspect-[16/9]">{img}</div>
+                  <div className={ratioStyle.aspectRatio ? undefined : "aspect-video"} style={ratioStyle}>
+                    {img}
+                  </div>
                 </div>
               );
             })}

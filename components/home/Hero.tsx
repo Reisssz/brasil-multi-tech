@@ -98,9 +98,15 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
   // (sem versão mobile própria) e banner gigante em telas ultrawide.
   const referencia = banners.find((b) => b.width && b.height);
   const ratio = referencia?.width && referencia?.height ? referencia.width / referencia.height : undefined;
-  const referenciaMobile = bannersMobile.find((b) => b.width && b.height);
-  const ratioMobile =
-    referenciaMobile?.width && referenciaMobile?.height ? referenciaMobile.width / referenciaMobile.height : undefined;
+  // Mobile pode vir embutido no próprio slide (cadastro pelo admin) ou de
+  // um array separado pareado por ordem (modo antigo, pastas de arquivo).
+  const slideComMobile = banners.find((b) => b.mobileWidth && b.mobileHeight);
+  const pastaMobile = bannersMobile.find((b) => b.width && b.height);
+  const ratioMobile = slideComMobile
+    ? slideComMobile.mobileWidth! / slideComMobile.mobileHeight!
+    : pastaMobile?.width && pastaMobile?.height
+      ? pastaMobile.width / pastaMobile.height
+      : undefined;
 
   // aspect-ratio vai pro <style> (classe), não pro style inline — inline
   // sempre vence regra de classe/media query, o que impediria a troca de
@@ -151,13 +157,15 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
             style={{ transform: `translateX(-${active * 100}%)` }}
           >
             {banners.map((banner, i) => {
-              // Par mobile do mesmo índice (1º com 1º, 2º com 2º...) — se
-              // não existir, o slide usa a imagem principal normalmente.
-              const bannerMobileCorrespondente = bannersMobile[i];
+              // Mobile embutido no slide (cadastro pelo admin) tem prioridade;
+              // sem isso, cai no pareamento por ORDEM do modo antigo (1º com
+              // 1º, 2º com 2º...) — se não existir nenhum dos dois, o slide
+              // usa a imagem principal normalmente.
+              const srcMobile = banner.mobileSrc ?? bannersMobile[i]?.src;
               const img = (
                 <picture>
-                  {bannerMobileCorrespondente && (
-                    <source media={`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`} srcSet={bannerMobileCorrespondente.src} />
+                  {srcMobile && (
+                    <source media={`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`} srcSet={srcMobile} />
                   )}
                   {/* eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design */}
                   <img
