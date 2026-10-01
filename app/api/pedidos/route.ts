@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { data: pedido, error } = await supabase
     .from("orders")
-    .select("id, status, total, items, endereco_entrega, created_at, user_id")
+    .select("id, status, total, items, endereco_entrega, metodo_pagamento, created_at, user_id")
     .eq("id", id)
     .single();
 
@@ -34,11 +34,18 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const { data: envio } = await supabase
-    .from("shipments")
-    .select("status, tracking_code, tracking_url")
-    .eq("order_id", id)
-    .maybeSingle();
+  const [{ data: envio }, { data: pagamento }] = await Promise.all([
+    supabase
+      .from("shipments")
+      .select("status, tracking_code, tracking_url")
+      .eq("order_id", id)
+      .maybeSingle(),
+    supabase
+      .from("payments")
+      .select("mp_status, mp_status_detail, metodo, valor")
+      .eq("order_id", id)
+      .maybeSingle(),
+  ]);
 
-  return NextResponse.json({ pedido, envio: envio ?? null });
+  return NextResponse.json({ pedido, envio: envio ?? null, pagamento: pagamento ?? null });
 }

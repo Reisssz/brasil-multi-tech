@@ -1,4 +1,5 @@
 import { obterTokenValido } from "./oauth";
+import { SITE } from "@/lib/config";
 
 const BASE_URL = process.env.MELHOR_ENVIO_BASE_URL!;
 
@@ -34,6 +35,20 @@ export class MelhorEnvioApiError extends Error {
   }
 }
 
+export class MelhorEnvioTlsError extends Error {
+  constructor() {
+    super("A validação TLS do Melhor Envio falhou: certificado expirado na cadeia de confiança da rede.");
+    this.name = "MelhorEnvioTlsError";
+  }
+}
+
+function codigoDaCausa(erro: unknown): string | undefined {
+  if (typeof erro !== "object" || erro === null || !("cause" in erro)) return undefined;
+  const causa = erro.cause;
+  if (typeof causa !== "object" || causa === null || !("code" in causa)) return undefined;
+  return typeof causa.code === "string" ? causa.code : undefined;
+}
+
 async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa = 1): Promise<T> {
   const token = await obterTokenValido();
 
@@ -50,6 +65,10 @@ async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa =
       },
     });
   } catch (erroRede) {
+    if (codigoDaCausa(erroRede) === "CERT_HAS_EXPIRED") {
+      throw new MelhorEnvioTlsError();
+    }
+
     // Falha de conexão (não é erro da API, é a requisição nem chegar lá) —
     // tenta mais uma vez antes de desistir, cobre soluços passageiros de
     // rede comuns em ambiente serverless.
@@ -72,14 +91,14 @@ async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa =
 
 /** Só o CEP de origem, validado — suficiente pra COTAR frete (calculate não exige nome/documento do remetente). */
 function cepOrigemValidado() {
-  const cepOrigem = (process.env.MELHOR_ENVIO_CEP_ORIGEM ?? "").replace(/\D/g, "");
+  const cepOrigem = SITE.address.zip.replace(/\D/g, "");
 
   if (cepOrigem.length !== 8) {
     // Falha cedo e com mensagem clara em vez de deixar a API do Melhor
     // Envio devolver "cep_origem está invalido" sem contexto nenhum.
     throw new Error(
-      `MELHOR_ENVIO_CEP_ORIGEM inválido ou não configurado (valor atual: "${process.env.MELHOR_ENVIO_CEP_ORIGEM ?? ""}"). ` +
-        "Configure um CEP real de 8 dígitos nas variáveis de ambiente."
+      `CEP de origem inválido na configuração da loja (valor atual: "${SITE.address.zip}"). ` +
+        "Configure um CEP real de 8 dígitos em lib/config.ts."
     );
   }
 
@@ -90,7 +109,7 @@ function cepOrigemValidado() {
 function enderecoRemetente() {
   const cepOrigem = cepOrigemValidado();
 
-  const nome = process.env.MELHOR_ENVIO_NOME_REMETENTE ?? "";
+  const nome = process.env.MELHOR_ENVIO_NOME_REMETENTE ?? SITE.name;
   const documento = (process.env.MELHOR_ENVIO_DOCUMENTO_REMETENTE ?? "").replace(/\D/g, "");
 
   if (!nome) {
@@ -106,11 +125,12 @@ function enderecoRemetente() {
     name: nome,
     document: documento || undefined,
     postal_code: cepOrigem,
-    address: process.env.MELHOR_ENVIO_ENDERECO_REMETENTE!,
-    number: process.env.MELHOR_ENVIO_NUMERO_REMETENTE!,
-    district: process.env.MELHOR_ENVIO_BAIRRO_REMETENTE!,
-    city: process.env.MELHOR_ENVIO_CIDADE_REMETENTE!,
-    state_abbr: process.env.MELHOR_ENVIO_UF_REMETENTE!,
+    address: SITE.address.street,
+    number: SITE.address.number,
+    complement: SITE.address.complement,
+    district: SITE.address.district,
+    city: SITE.address.city,
+    state_abbr: SITE.address.state,
     country_id: "BR",
   };
 }
@@ -235,6 +255,35 @@ export async function calcularFrete(
       motivo: servico.error!,
     })),
   };
+}
+
+export type StatusRastreio = {
+  melhorEnvioId: string;
+  tracking: string | null;
+  status: string | null;
+};
+
+/**
+ * Consulta o status/código de rastreio de uma ou mais etiquetas já geradas.
+ * Retorna um item por ID pedido, mesmo quando a Melhor Envio ainda não
+ * atribuiu o tracking (tracking vem null nesse caso — normal logo após a
+ * postagem, a transportadora demora pra devolver o código).
+ */
+export async function buscarStatusRastreio(melhorEnvioIds: string[]): Promise<StatusRastreio[]> {
+  if (melhorEnvioIds.length === 0) return [];
+
+  const resultado = await melhorEnvioFetch<{
+    [id: string]: { tracking?: string | null; status?: string };
+  }>("/me/shipment/tracking", {
+    method: "POST",
+    body: JSON.stringify({ orders: melhorEnvioIds }),
+  });
+
+  return melhorEnvioIds.map((id) => ({
+    melhorEnvioId: id,
+    tracking: resultado[id]?.tracking ?? null,
+    status: resultado[id]?.status ?? null,
+  }));
 }
 
 export type DadosCompraEtiqueta = {

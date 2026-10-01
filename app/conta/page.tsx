@@ -6,6 +6,7 @@ import { formatBRL } from "@/lib/pricing";
 const rotuloStatus: Record<string, string> = {
   pending: "Aguardando pagamento",
   paid: "Pago",
+  preparing: "Em preparação",
   shipped: "Enviado",
   delivered: "Entregue",
   cancelled: "Cancelado",
@@ -42,7 +43,7 @@ export default async function PaginaConta() {
   const nomeCompleto = perfil?.nome_completo?.trim() || "Cliente Brasil Multi Tech";
   const totalPedidos = pedidos?.length ?? 0;
   const totalGasto = (pedidos ?? [])
-    .filter((p) => p.status === "paid" || p.status === "shipped" || p.status === "delivered")
+    .filter((p) => p.status === "paid" || p.status === "preparing" || p.status === "shipped" || p.status === "delivered")
     .reduce((soma, p) => soma + p.total, 0);
 
   const memberSince = perfil?.created_at

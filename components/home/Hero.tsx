@@ -16,10 +16,8 @@ const MOBILE_BREAKPOINT_PX = 640;
  * clicável, levando pra /vender — os demais são só imagem.
  *
  * `bannersMobile` (opcional, public/banners/banner-mobile ou banners-mobile
- * — ver lib/banners.ts) é pareado por
- * ordem com `banners`: o 1º mobile substitui o 1º principal só abaixo de
- * `sm`, o 2º substitui o 2º, e assim por diante. Slide sem par mobile usa a
- * imagem principal normalmente (cortada pelo object-cover).
+ * — ver lib/banners.ts) é pareado por ordem com `banners`. Cada imagem usa
+ * sua proporção intrínseca pra preencher a largura sem corte ou bordas.
  */
 export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; bannersMobile?: Banner[] }) {
   const heroId = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -91,28 +89,17 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
 
   if (banners.length === 0) return null;
 
-  // Proporção real de cada conjunto, lida no server a partir do primeiro
-  // arquivo com dimensões conhecidas (lib/banners.ts) — troque a resolução
-  // dos arquivos que o Hero se ajusta sozinho, sem editar este componente.
-  // minHeight/maxHeight seguram os extremos: banner ilegível de tão baixo
-  // (sem versão mobile própria) e banner gigante em telas ultrawide.
-  const referencia = banners.find((b) => b.width && b.height);
-  const ratio = referencia?.width && referencia?.height ? referencia.width / referencia.height : undefined;
-  // Mobile pode vir embutido no próprio slide (cadastro pelo admin) ou de
-  // um array separado pareado por ordem (modo antigo, pastas de arquivo).
-  const slideComMobile = banners.find((b) => b.mobileWidth && b.mobileHeight);
-  const pastaMobile = bannersMobile.find((b) => b.width && b.height);
-  const ratioMobile = slideComMobile
-    ? slideComMobile.mobileWidth! / slideComMobile.mobileHeight!
-    : pastaMobile?.width && pastaMobile?.height
-      ? pastaMobile.width / pastaMobile.height
-      : undefined;
-
-  // aspect-ratio vai pro <style> (classe), não pro style inline — inline
-  // sempre vence regra de classe/media query, o que impediria a troca de
-  // proporção no breakpoint mobile de ter efeito nenhum.
-  const boxStyle = { minHeight: 220, maxHeight: 560 };
-  const boxClassName = `relative overflow-hidden hero-box-${heroId} ${ratio ? "" : "aspect-video sm:aspect-2/1 lg:aspect-5/1"}`;
+  const bannerAtivo = banners[active];
+  const mobileAtivo = bannerAtivo.mobileSrc
+    ? { width: bannerAtivo.mobileWidth, height: bannerAtivo.mobileHeight }
+    : bannersMobile[active]
+      ? { width: bannersMobile[active].width, height: bannersMobile[active].height }
+      : null;
+  const ratioDesktop =
+    bannerAtivo.width && bannerAtivo.height ? bannerAtivo.width / bannerAtivo.height : 16 / 9;
+  const ratioMobile =
+    mobileAtivo?.width && mobileAtivo.height ? mobileAtivo.width / mobileAtivo.height : ratioDesktop;
+  const boxClassName = `relative w-full overflow-hidden hero-box-${heroId}`;
 
   return (
     <section
@@ -127,29 +114,15 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
         className="pointer-events-none absolute -top-1/3 left-1/2 -translate-x-1/2 w-[130%] aspect-square rounded-full bg-brand/15 blur-[90px]"
       />
 
-      {/* Proporção real do banner via classe (não inline — inline venceria
-          a media query abaixo e a troca pro mobile nunca teria efeito).
-          Com ratioMobile, abaixo de MOBILE_BREAKPOINT_PX a caixa casa com a
-          imagem mobile que o <picture> já está exibindo nesse breakpoint. */}
-      {ratio && (
-        <style>{`
-          .hero-box-${heroId} { aspect-ratio: ${ratio}; }
-          ${
-            ratioMobile
-              ? `@media (max-width: ${MOBILE_BREAKPOINT_PX - 1}px) { .hero-box-${heroId} { aspect-ratio: ${ratioMobile}; } }`
-              : ""
-          }
-        `}</style>
-      )}
+      <style>{`
+        .hero-box-${heroId} { aspect-ratio: ${ratioDesktop}; }
+        @media (max-width: ${MOBILE_BREAKPOINT_PX - 1}px) {
+          .hero-box-${heroId} { aspect-ratio: ${ratioMobile}; }
+        }
+      `}</style>
 
-      {/* Full-bleed: o banner ocupa a largura inteira do site, na proporção
-          real dos arquivos atuais (calculada acima, a partir das dimensões
-          lidas no server). minHeight evita banner ilegível no mobile quando
-          o arquivo é bem largo/baixo; maxHeight evita banner gigante em
-          telas ultrawide. Sem dimensões conhecidas, cai no aspect-ratio de
-          segurança (className condicional em boxClassName). */}
       <div className="relative w-full">
-        <div className={boxClassName} style={boxStyle}>
+        <div className={boxClassName}>
           {/* Rolagem lateral simples: um track em flex que desliza no eixo X.
               Sem zoom/ken burns e sem crossfade — só o deslocamento. */}
           <div
@@ -163,11 +136,10 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
               // usa a imagem principal normalmente.
               const srcMobile = banner.mobileSrc ?? bannersMobile[i]?.src;
               const img = (
-                <picture>
+                <picture className="block h-full w-full">
                   {srcMobile && (
                     <source media={`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`} srcSet={srcMobile} />
                   )}
-                  {/* eslint-disable-next-line @next/next/no-img-element -- banner de marketing com dimensões definidas pelo time de design */}
                   <img
                     src={banner.src}
                     alt=""

@@ -28,6 +28,22 @@ export async function atualizarStatusVenda(solicitacaoId: string, status: string
   revalidatePath("/admin/vender");
 }
 
+const ETAPAS_PROCESSO = ["awaiting_shipment", "in_transit", "received", "analyzing", "payment_sent"] as const;
+
+export async function atualizarEtapaProcessoVenda(solicitacaoId: string, etapa: string) {
+  const supabase = await createClient();
+  if (!(await verificarAdmin(supabase)) || !ETAPAS_PROCESSO.includes(etapa as (typeof ETAPAS_PROCESSO)[number])) return;
+
+  const supabaseAdmin = createAdminClient();
+  await supabaseAdmin
+    .from("trade_in_requests")
+    .update({ process_stage: etapa, updated_at: new Date().toISOString() })
+    .eq("id", solicitacaoId);
+
+  revalidatePath("/admin/vender");
+  revalidatePath("/vender/formulario");
+}
+
 /**
  * O documento de identidade fica num bucket privado (documentos-venda) —
  * essa URL assinada é gerada sob demanda (só quando o admin clica em "Ver

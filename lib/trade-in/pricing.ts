@@ -49,7 +49,6 @@ export type RespostasEstimativa = {
   saudeBateria: SaudeBateria;
   pecaNaoGenuina: boolean;
   includesBox?: boolean;
-  includesCharger?: boolean;
 };
 
 const MULT_MARCAS_DE_USO: Record<MarcasDeUso, number> = {
@@ -69,7 +68,7 @@ const PENALIDADE_TELA = 0.55;
 const PENALIDADE_BIOMETRIA = 0.95;
 const PENALIDADE_CAMERA = 0.85;
 const PENALIDADE_PECA_NAO_GENUINA = 0.95;
-const BONUS_ACESSORIO = 0.02; // caixa e carregador originais somam ~2% cada
+const BONUS_CAIXA = 0.02;
 
 const MAIS_VALOR_MULTIPLIER = 1.2; // "Venda Mais Valor": no mínimo 20% a mais
 
@@ -119,8 +118,7 @@ export function calcularEstimativa(
   if (respostas.cameraComProblema) valor *= PENALIDADE_CAMERA;
   if (respostas.pecaNaoGenuina) valor *= PENALIDADE_PECA_NAO_GENUINA;
 
-  if (respostas.includesBox) valor *= 1 + BONUS_ACESSORIO;
-  if (respostas.includesCharger) valor *= 1 + BONUS_ACESSORIO;
+  if (respostas.includesBox) valor *= 1 + BONUS_CAIXA;
 
   return {
     valorEstimadoCents: Math.max(0, Math.round(valor / 100) * 100),

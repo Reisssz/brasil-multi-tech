@@ -14,8 +14,17 @@ import {
   type SaudeBateria,
 } from "@/lib/trade-in/pricing";
 import { createClient } from "@/lib/supabase/client";
-import { assinarContrato, definirRecebimento, enviarDocumentoIdentidade, enviarSolicitacao } from "./actions";
+import {
+  assinarContrato,
+  definirMetodoEnvio,
+  definirRecebimento,
+  enviarDocumentoIdentidade,
+  enviarSolicitacao,
+  registrarRastreioCorreios,
+  type MetodoEnvioTradeIn,
+} from "./actions";
 import { StepTracker, type WizardStepId } from "./StepTracker";
+import { SITE, whatsappLink } from "@/lib/config";
 
 const DRAFT_KEY = "bmt_vender_rascunho_v1";
 const REGEX_IMEI = /^\d{15}$/;
@@ -44,6 +53,9 @@ export type TradeInRequestRow = {
   payment_method: "pix" | "transferencia" | null;
   payment_pix_key: string | null;
   payment_bank_details: string | null;
+  shipping_method: MetodoEnvioTradeIn | null;
+  shipping_tracking_code: string | null;
+  process_stage: string | null;
 };
 
 interface Props {
@@ -61,6 +73,12 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   // A solicitação "ativa" ignora uma recusada — nesse caso o cliente começa
   // uma nova localmente, como se não houvesse solicitação nenhuma.
   const row = initialRequest && initialRequest.status !== "recusado" ? initialRequest : null;
+
+  useEffect(() => {
+    if (!row?.payment_method) return;
+    const interval = window.setInterval(() => router.refresh(), 30000);
+    return () => window.clearInterval(interval);
+  }, [router, row?.id, row?.payment_method]);
 
   const [localStep, setLocalStep] = useState<LocalStep>("aparelho");
   const restauradoRef = useRef(false);
@@ -102,7 +120,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const [saudeBateria, setSaudeBateria] = useState<SaudeBateria>("superior_90");
   const [pecaNaoGenuina, setPecaNaoGenuina] = useState(false);
   const [includesBox, setIncludesBox] = useState(false);
-  const [includesCharger, setIncludesCharger] = useState(false);
+  const [hasInvoice, setHasInvoice] = useState(false);
 
   // Fixo: só existe a modalidade "Venda Agora" — mantido como constante em
   // vez de removido pra não mexer no formato salvo em trade_in_requests
@@ -122,6 +140,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
   const [metodoRecebimento, setMetodoRecebimento] = useState<"pix" | "transferencia">("pix");
   const [detalhesRecebimento, setDetalhesRecebimento] = useState("");
+  const [metodoEnvio, setMetodoEnvio] = useState<MetodoEnvioTradeIn>(row?.shipping_method ?? "correios");
+  const [codigoRastreio, setCodigoRastreio] = useState("");
   const [salvandoRecebimento, setSalvandoRecebimento] = useState(false);
 
   const [arquivoDocumento, setArquivoDocumento] = useState<File | null>(null);
@@ -163,7 +183,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       if (draft.saudeBateria) setSaudeBateria(draft.saudeBateria);
       if (typeof draft.pecaNaoGenuina === "boolean") setPecaNaoGenuina(draft.pecaNaoGenuina);
       if (typeof draft.includesBox === "boolean") setIncludesBox(draft.includesBox);
-      if (typeof draft.includesCharger === "boolean") setIncludesCharger(draft.includesCharger);
+      if (typeof draft.hasInvoice === "boolean") setHasInvoice(draft.hasInvoice);
       if (draft.contactName) setContactName(draft.contactName);
       if (draft.contactPhone) setContactPhone(draft.contactPhone);
       if (draft.contactEmail) setContactEmail(draft.contactEmail);
@@ -183,7 +203,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
           category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
           turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
           traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-          saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType,
+          saudeBateria, pecaNaoGenuina, includesBox, hasInvoice, offerType,
           contactName, contactPhone, contactEmail,
         })
       );
@@ -194,7 +214,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
     row, category, brand, brandOutra, model, modelOutro, storageGb, color, colorOutra, imei, imei2,
     turnsOn, fazRecebeLigacoes, wifiBluetoothOk,
     marcasDeUso, traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-    saudeBateria, pecaNaoGenuina, includesBox, includesCharger, offerType, contactName, contactPhone, contactEmail,
+    saudeBateria, pecaNaoGenuina, includesBox, hasInvoice, offerType, contactName, contactPhone, contactEmail,
   ]);
 
   // "Outro(a)" no seletor de botões revela um campo livre — resolve pro
@@ -208,7 +228,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
     storageGb: storageGb ? Number(storageGb) : undefined,
     turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
     traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-    saudeBateria, pecaNaoGenuina, includesBox, includesCharger,
+    saudeBateria, pecaNaoGenuina, includesBox,
   };
 
   const rejeitado = useMemo(
@@ -223,12 +243,12 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         storageGb: storageGb ? Number(storageGb) : undefined,
         turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
         traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-        saudeBateria, pecaNaoGenuina, includesBox, includesCharger,
+        saudeBateria, pecaNaoGenuina, includesBox,
       }, catalogo),
     [
       brandResolvido, modelResolvido, storageGb, turnsOn, fazRecebeLigacoes, wifiBluetoothOk, marcasDeUso,
       traseiraLateralDanificada, telaDanificada, biometriaFunciona, cameraComProblema,
-      saudeBateria, pecaNaoGenuina, includesBox, includesCharger, catalogo,
+      saudeBateria, pecaNaoGenuina, includesBox, catalogo,
     ]
   );
 
@@ -275,6 +295,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
         color: colorResolvido || undefined,
         imei,
         imei2,
+        hasInvoice,
         offerType,
         contactName,
         contactPhone,
@@ -378,11 +399,44 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
     setErro(null);
     setSalvandoRecebimento(true);
     try {
-      const resultado = await definirRecebimento(row.id, metodoRecebimento, detalhesRecebimento);
+      const resultado = await definirRecebimento(row.id, metodoRecebimento, detalhesRecebimento, metodoEnvio);
       if (resultado.error) {
         setErro(resultado.error);
         return;
       }
+      router.refresh();
+    } finally {
+      setSalvandoRecebimento(false);
+    }
+  }
+
+  async function handleDefinirMetodoEnvio() {
+    if (!row) return;
+    setErro(null);
+    setSalvandoRecebimento(true);
+    try {
+      const resultado = await definirMetodoEnvio(row.id, metodoEnvio);
+      if (resultado.error) {
+        setErro(resultado.error);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setSalvandoRecebimento(false);
+    }
+  }
+
+  async function handleRegistrarRastreio() {
+    if (!row) return;
+    setErro(null);
+    setSalvandoRecebimento(true);
+    try {
+      const resultado = await registrarRastreioCorreios(row.id, codigoRastreio);
+      if (resultado.error) {
+        setErro(resultado.error);
+        return;
+      }
+      setCodigoRastreio("");
       router.refresh();
     } finally {
       setSalvandoRecebimento(false);
@@ -583,8 +637,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                   Tenho a caixa original
                 </label>
                 <label className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="checkbox" checked={includesCharger} onChange={(e) => setIncludesCharger(e.target.checked)} />
-                  Tenho o carregador
+                  <input type="checkbox" checked={hasInvoice} onChange={(e) => setHasInvoice(e.target.checked)} />
+                  Tenho nota fiscal
                 </label>
               </div>
             </div>
@@ -821,30 +875,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
           <DeviceSummaryCard brand={row.brand} model={row.model} storageGb={row.storage_gb} color={row.color} />
 
           <div className="rounded-2xl border border-border bg-surface p-6">
-            {row.status === "concluido" ? (
-              <div className="text-center py-8">
-                <h2 className="font-bold text-foreground text-lg mb-2">Venda concluída 🎉</h2>
-                <p className="text-sm text-muted">Obrigado por vender seu aparelho pra Brasil Multi Tech!</p>
-              </div>
-            ) : row.payment_method ? (
-              <div className="text-center py-6">
-                <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success-light text-success mb-4">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                <h2 className="font-bold text-foreground text-lg mb-2">Tudo certo!</h2>
-                <p className="text-sm text-muted max-w-sm mx-auto mb-1">
-                  Você vai receber por{" "}
-                  <strong>{row.payment_method === "pix" ? "Pix" : "transferência bancária"}</strong> assim que recebermos e
-                  confirmarmos o aparelho.
-                </p>
-                <p className="text-sm text-muted max-w-sm mx-auto">
-                  Depois que sua proposta é aceita, orientamos sobre a forma de envio ou entrega, sem custo para você.
-                  Fique de olho no seu e-mail e WhatsApp.
-                </p>
-              </div>
-            ) : (
+            {!row.payment_method ? (
               <>
                 <h2 className="font-bold text-foreground text-lg mb-4">Como você quer receber?</h2>
                 <div className="flex flex-col gap-2 mb-4">
@@ -877,6 +908,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                   ))}
                 </div>
 
+                  <ShippingMethodTabs value={metodoEnvio} onChange={setMetodoEnvio} />
+
                 <Campo
                   label={metodoRecebimento === "pix" ? "Chave Pix" : "Dados bancários (banco, agência, conta, titular)"}
                   value={detalhesRecebimento}
@@ -891,9 +924,92 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                   onClick={handleDefinirRecebimento}
                   className="mt-5 w-full inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground font-bold text-sm transition-colors"
                 >
-                  {salvandoRecebimento ? "Salvando…" : "Confirmar e finalizar"}
+                  {salvandoRecebimento ? "Salvando…" : "Confirmar e ver instruções"}
                 </button>
               </>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {row.status === "concluido" ? (
+                  <div className="rounded-xl bg-success-light px-4 py-3">
+                    <h2 className="font-bold text-success">Venda concluída</h2>
+                    <p className="text-sm text-foreground">O pagamento foi marcado como enviado pela equipe.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="font-bold text-foreground text-lg">Acompanhe sua venda</h2>
+                    <p className="text-sm text-muted mt-1">
+                      Recebimento escolhido: <strong>{row.payment_method === "pix" ? "Pix" : "Transferência bancária"}</strong>
+                    </p>
+                  </div>
+                )}
+
+                {!row.shipping_method ? (
+                  <>
+                    <ShippingMethodTabs value={metodoEnvio} onChange={setMetodoEnvio} />
+                    {erro && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{erro}</p>}
+                    <button
+                      type="button"
+                      disabled={salvandoRecebimento}
+                      onClick={handleDefinirMetodoEnvio}
+                      className="w-full inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground font-bold text-sm transition-colors"
+                    >
+                      {salvandoRecebimento ? "Salvando…" : "Confirmar forma de envio"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <ProcessoVendaTimeline row={row} />
+                    <InstrucoesEnvio metodo={row.shipping_method} solicitacaoId={row.id} />
+
+                    {row.shipping_method === "correios" && (
+                      <div className="border-t border-border pt-4">
+                        {row.shipping_tracking_code ? (
+                          <p className="text-sm text-muted">
+                            Rastreio informado: {" "}
+                            <a
+                              href={`https://rastreamento.correios.com.br/app/index.php?objetos=${encodeURIComponent(row.shipping_tracking_code)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-semibold text-brand-dark underline"
+                            >
+                              {row.shipping_tracking_code}
+                            </a>
+                          </p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            <label htmlFor="codigo-rastreio-venda" className="text-sm font-semibold text-foreground">
+                              Código de rastreio dos Correios
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                id="codigo-rastreio-venda"
+                                value={codigoRastreio}
+                                onChange={(e) => setCodigoRastreio(e.target.value.toUpperCase())}
+                                placeholder="Ex.: AA123456789BR"
+                                maxLength={30}
+                                className="min-w-0 flex-1 h-11 rounded-lg border border-border px-3 text-sm uppercase"
+                              />
+                              <button
+                                type="button"
+                                disabled={salvandoRecebimento || codigoRastreio.trim().length < 8}
+                                onClick={handleRegistrarRastreio}
+                                className="rounded-lg bg-brand px-4 text-sm font-semibold text-brand-foreground disabled:opacity-40"
+                              >
+                                {salvandoRecebimento ? "Salvando…" : "Salvar código"}
+                              </button>
+                            </div>
+                            {erro && <p className="text-sm text-red-600">{erro}</p>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <a href={whatsappLink("Olá! Preciso de ajuda com o envio da minha solicitação de venda.")} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand-dark hover:underline">
+                      Precisa de ajuda com o envio? Fale com a loja
+                    </a>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -913,8 +1029,133 @@ function getBanner(step: WizardStepId, row: TradeInRequestRow | null, rejeitado:
   if (step === "termos") return { title: "Proposta aceita!", subtitle: "Leia e assine os termos da venda para formalizar." };
   if (step === "documentos") return { title: "Quase lá!", subtitle: "Precisamos confirmar sua identidade antes de seguir." };
   if (row?.status === "concluido") return { title: "Concluído!", subtitle: "Essa venda já foi finalizada." };
-  if (row?.payment_method) return { title: "Tudo certo!", subtitle: "Assim que recebermos o aparelho, seguimos com o pagamento." };
+  if (row?.payment_method && !row.shipping_method) {
+    return { title: "Escolha como enviar", subtitle: "Selecione Correios ou entrega na loja para acompanhar sua venda." };
+  }
+  if (row?.payment_method) return { title: "Acompanhe sua venda", subtitle: "Veja as instruções de envio e cada etapa do processo." };
   return { title: "Quase lá!", subtitle: "Escolha como deseja receber o pagamento." };
+}
+
+function ShippingMethodTabs({
+  value,
+  onChange,
+}: {
+  value: MetodoEnvioTradeIn;
+  onChange: (metodo: MetodoEnvioTradeIn) => void;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-foreground">Como vai entregar o aparelho?</h3>
+      <div role="tablist" aria-label="Forma de envio" className="grid grid-cols-2 border-b border-border">
+        {([
+          { value: "correios", label: "Correios" },
+          { value: "loja", label: "Entrega na loja" },
+        ] as const).map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={`h-10 border-b-2 text-sm font-semibold transition-colors ${
+              value === option.value ? "border-brand text-brand-dark" : "border-transparent text-muted hover:text-foreground"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <InstrucoesEnvio metodo={value} />
+    </section>
+  );
+}
+
+function InstrucoesEnvio({ metodo, solicitacaoId }: { metodo: MetodoEnvioTradeIn; solicitacaoId?: string }) {
+  const codigo = solicitacaoId?.slice(0, 8).toUpperCase();
+
+  return (
+    <div role="tabpanel" className="rounded-lg bg-[#f7f8fa] p-4 text-sm">
+      {metodo === "correios" ? (
+        <>
+          <p className="font-semibold text-foreground">Envio pelos Correios</p>
+          <ol className="mt-2 list-decimal pl-5 text-muted space-y-1">
+            <li>Embale o aparelho com proteção e inclua o código {codigo ? <strong>#{codigo}</strong> : "da solicitação"} dentro do pacote.</li>
+            <li>Use uma modalidade com rastreamento e guarde o comprovante.</li>
+            <li>Após postar, informe o código de rastreio abaixo para acompanhar o trajeto.</li>
+          </ol>
+          <p className="mt-3 font-medium text-foreground">Endereço para postagem</p>
+        </>
+      ) : (
+        <>
+          <p className="font-semibold text-foreground">Entrega na loja física</p>
+          <p className="mt-2 text-muted">
+            Leve o aparelho à loja e informe o código {codigo ? <strong>#{codigo}</strong> : "da solicitação"} à equipe.
+            Consulte o atendimento para confirmar o horário antes de ir.
+          </p>
+          <p className="mt-3 font-medium text-foreground">Endereço da loja</p>
+        </>
+      )}
+      <p className="mt-1 text-muted">
+        {SITE.address.line1}<br />
+        {SITE.address.line2}<br />
+        CEP {SITE.address.zip}
+      </p>
+      <a
+        href={whatsappLink("Olá! Preciso confirmar as instruções para entregar meu aparelho.")}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 inline-flex font-semibold text-brand-dark hover:underline"
+      >
+        Confirmar detalhes com a loja
+      </a>
+    </div>
+  );
+}
+
+function ProcessoVendaTimeline({ row }: { row: TradeInRequestRow }) {
+  const ordemEtapa: Record<string, number> = {
+    awaiting_shipment: 0,
+    in_transit: 1,
+    received: 2,
+    analyzing: 3,
+    payment_sent: 4,
+  };
+  const atual = row.status === "concluido" ? 4 : (ordemEtapa[row.process_stage ?? ""] ?? -1);
+  const etapas = [
+    { label: "Solicitação aceita", done: true },
+    { label: "Contrato assinado", done: !!row.contract_accepted_at },
+    { label: "Documento enviado", done: !!row.documento_selfie_uploaded_at },
+    { label: "Forma de envio escolhida", done: !!row.shipping_method },
+    ...(row.shipping_method === "correios" ? [{ label: "Postado nos Correios", done: atual >= 1 }] : []),
+    { label: row.shipping_method === "loja" ? "Entregue na loja" : "Aparelho recebido pela equipe", done: atual >= 2 },
+    { label: "Em análise", done: atual >= 3 },
+    { label: "Pagamento enviado", done: atual >= 4 },
+  ];
+  const etapaAtual = row.shipping_method === "loja" && atual === 0
+    ? "Aguardando entrega na loja"
+    : ["Aguardando envio", "Em trânsito", "Aparelho recebido", "Em análise", "Pagamento enviado"][Math.max(0, atual)];
+
+  return (
+    <section className="border-t border-border pt-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-foreground">Acompanhamento da venda</h3>
+        <span className="text-xs font-semibold text-brand-dark">{etapaAtual}</span>
+      </div>
+      <div className="flex flex-col">
+        {etapas.map((etapa, indice) => (
+          <div key={etapa.label} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${etapa.done ? "bg-brand text-brand-foreground" : "bg-[#eef0f3] text-muted"}`}>
+                {etapa.done ? "✓" : indice + 1}
+              </span>
+              {indice < etapas.length - 1 && <span className={`min-h-5 w-px flex-1 ${etapa.done ? "bg-brand" : "bg-border"}`} />}
+            </div>
+            <span className={`pb-3 text-sm ${etapa.done ? "font-medium text-foreground" : "text-muted"}`}>{etapa.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function LiveEstimateStrip({

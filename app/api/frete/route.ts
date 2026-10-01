@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calcularFrete, dimensoesDaVariante, MelhorEnvioApiError } from "@/lib/melhor-envio/client";
+import { calcularFrete, dimensoesDaVariante, MelhorEnvioApiError, MelhorEnvioTlsError } from "@/lib/melhor-envio/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CartItem } from "@/lib/types";
 
@@ -133,6 +133,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ opcoes, avisoFrete });
   } catch (erro) {
+    if (erro instanceof MelhorEnvioTlsError) {
+      console.error("[frete] certificado TLS expirado na cadeia de confiança da rede.");
+      return NextResponse.json(
+        { error: "A conexão segura com a transportadora está temporariamente indisponível. Tente novamente mais tarde." },
+        { status: 502 }
+      );
+    }
+
     if (erro instanceof MelhorEnvioApiError) {
       // CEP inválido de verdade (não localizado pelos Correios/base do
       // Melhor Envio) é o único caso que devolvemos como erro do CLIENTE

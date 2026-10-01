@@ -137,6 +137,27 @@ async function lerBannersDePasta(pasta: string, urlBase: string): Promise<Banner
   );
 }
 
+async function lerBannersMobileFallback(): Promise<Banner[]> {
+  const regex = new RegExp(`^banner\\d+[-\\w]*\\.(${EXTENSOES})$`, "i");
+
+  for (const pasta of PASTAS_BANNERS_MOBILE) {
+    const nomes = listarArquivos(pasta)
+      .filter((nome) => regex.test(nome))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    if (nomes.length === 0) continue;
+
+    return Promise.all(
+      nomes.map(async (nome) => ({
+        src: `/banners/${path.basename(pasta)}/${encodeURIComponent(nome)}`,
+        href: hrefPorNome(nome),
+        ...(await lerDimensoes(path.join(pasta, nome))),
+      }))
+    );
+  }
+
+  return [];
+}
+
 /**
  * Banners do header principal (Hero). Prioriza os cadastrados pelo admin em
  * /admin/banners (tabela banners_principais); se a tabela ainda não existir
@@ -148,15 +169,19 @@ async function lerBannersDePasta(pasta: string, urlBase: string): Promise<Banner
 export async function listarBannersPrincipais(): Promise<Banner[]> {
   const linhas = await buscarBannersPrincipaisDb(true);
   if (linhas && linhas.length > 0) {
-    return linhas.map((l) => ({
-      src: l.imagem_desktop_url,
-      href: l.href,
-      width: l.imagem_desktop_largura ?? undefined,
-      height: l.imagem_desktop_altura ?? undefined,
-      mobileSrc: l.imagem_mobile_url ?? undefined,
-      mobileWidth: l.imagem_mobile_largura ?? undefined,
-      mobileHeight: l.imagem_mobile_altura ?? undefined,
-    }));
+    const mobileFallback = await lerBannersMobileFallback();
+    return linhas.map((l, i) => {
+      const mobile = mobileFallback[i];
+      return {
+        src: l.imagem_desktop_url,
+        href: l.href,
+        width: l.imagem_desktop_largura ?? undefined,
+        height: l.imagem_desktop_altura ?? undefined,
+        mobileSrc: l.imagem_mobile_url ?? mobile?.src,
+        mobileWidth: l.imagem_mobile_largura ?? mobile?.width,
+        mobileHeight: l.imagem_mobile_altura ?? mobile?.height,
+      };
+    });
   }
   return lerBannersDePasta(PASTA_BANNERS_PRINCIPAL, "/banners/banners-principal");
 }

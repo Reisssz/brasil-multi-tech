@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatBRL } from "@/lib/pricing";
-import { atualizarStatusVenda } from "./actions";
+import { atualizarEtapaProcessoVenda, atualizarStatusVenda } from "./actions";
 import { VerDocumentoButton } from "./VerDocumentoButton";
 
 const ROTULO_STATUS: Record<string, string> = {
@@ -20,6 +20,14 @@ const CORES_STATUS: Record<string, string> = {
   aceito: "bg-success-light text-success",
   recusado: "bg-red-50 text-red-600",
   concluido: "bg-success-light text-success",
+};
+
+const ROTULO_ETAPA_PROCESSO: Record<string, string> = {
+  awaiting_shipment: "Aguardando envio",
+  in_transit: "Em trânsito",
+  received: "Aparelho recebido",
+  analyzing: "Em análise",
+  payment_sent: "Pagamento enviado",
 };
 
 export default async function AdminVender() {
@@ -80,6 +88,7 @@ export default async function AdminVender() {
               <Info label="Câmera com problema" valor={s.camera_com_problema ? "Sim" : "Não"} />
               <Info label="Saúde da bateria" valor={s.saude_bateria} />
               <Info label="Peça não genuína" valor={s.peca_nao_genuina ? "Sim" : "Não"} />
+              <Info label="Tem nota fiscal" valor={s.has_invoice == null ? "Não informado" : s.has_invoice ? "Sim" : "Não"} />
             </div>
 
             {s.notes && <p className="text-xs text-muted mb-2 italic">&ldquo;{s.notes}&rdquo;</p>}
@@ -114,6 +123,41 @@ export default async function AdminVender() {
                 Receber por <strong>{s.payment_method === "pix" ? "Pix" : "Transferência"}</strong>:{" "}
                 {s.payment_method === "pix" ? s.payment_pix_key : s.payment_bank_details}
               </p>
+            )}
+
+            {s.shipping_method && (
+              <div className="mt-3 rounded-lg bg-[#f7f8fa] p-3">
+                <p className="text-sm text-foreground">
+                  Envio: <strong>{s.shipping_method === "correios" ? "Correios" : "Entrega na loja"}</strong>
+                </p>
+                {s.shipping_tracking_code && (
+                  <p className="mt-1 text-xs text-muted">
+                    Rastreio: <a href={`https://rastreamento.correios.com.br/app/index.php?objetos=${encodeURIComponent(s.shipping_tracking_code)}`} target="_blank" rel="noreferrer" className="font-semibold text-brand-dark underline">{s.shipping_tracking_code}</a>
+                  </p>
+                )}
+                <form
+                  action={async (formData: FormData) => {
+                    "use server";
+                    await atualizarEtapaProcessoVenda(s.id, String(formData.get("processStage")));
+                  }}
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                >
+                  <label htmlFor={`process-stage-${s.id}`} className="text-xs text-muted">Etapa do processo</label>
+                  <select
+                    id={`process-stage-${s.id}`}
+                    name="processStage"
+                    defaultValue={s.process_stage ?? "awaiting_shipment"}
+                    className="h-9 rounded-lg border border-border px-2 text-xs"
+                  >
+                    {Object.entries(ROTULO_ETAPA_PROCESSO).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>{rotulo}</option>
+                    ))}
+                  </select>
+                  <button type="submit" className="h-9 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-white">
+                    Atualizar acompanhamento
+                  </button>
+                </form>
+              </div>
             )}
 
             <div className="flex flex-wrap items-center gap-2 mt-3">

@@ -7,6 +7,7 @@ import { GerarEtiquetaButton } from "./GerarEtiquetaButton";
 const ROTULO_STATUS: Record<string, string> = {
   pending: "Aguardando pagamento",
   paid: "Pago",
+  preparing: "Em preparação",
   shipped: "Enviado",
   delivered: "Entregue",
   cancelled: "Cancelado",

@@ -12,11 +12,14 @@ type EnviarSolicitacaoInput = RespostasEstimativa & {
   color?: string;
   imei: string;
   imei2: string;
+  hasInvoice: boolean;
   offerType: OfferType;
   contactName: string;
   contactPhone: string;
   contactEmail: string;
 };
+
+export type MetodoEnvioTradeIn = "correios" | "loja";
 
 const REGEX_IMEI = /^\d{15}$/;
 
@@ -80,7 +83,8 @@ export async function enviarSolicitacao(
       saude_bateria: input.saudeBateria,
       peca_nao_genuina: input.pecaNaoGenuina,
       includes_box: input.includesBox ?? false,
-      includes_charger: input.includesCharger ?? false,
+      includes_charger: false,
+      has_invoice: input.hasInvoice === true,
       offer_type: input.offerType,
       estimated_value_cents: valorEscolhidoCents,
       final_value_cents: valorEscolhidoCents,
@@ -95,6 +99,9 @@ export async function enviarSolicitacao(
 
   if (error || !data) {
     console.error("[vender/formulario] falha ao enviar solicitação:", error?.message);
+    if (error?.message.includes("has_invoice")) {
+      return { error: "A atualização do formulário ainda não foi aplicada no banco. Aplique a migração de nota fiscal no Supabase e tente novamente." };
+    }
     if (error?.message.includes("imei")) {
       return { error: "IMEI inválido — confira se digitou os 15 números corretamente." };
     }
@@ -115,7 +122,7 @@ async function buscarSolicitacaoPropria(id: string) {
 
   const { data: solicitacao } = await supabase
     .from("trade_in_requests")
-    .select("id, user_id, status, contract_accepted_at, documento_selfie_uploaded_at, payment_method, brand, model, storage_gb, color, imei, imei2, final_value_cents, estimated_value_cents, contact_name, contact_email")
+    .select("id, user_id, status, contract_accepted_at, documento_selfie_uploaded_at, payment_method, shipping_method, process_stage, brand, model, storage_gb, color, imei, imei2, final_value_cents, estimated_value_cents, contact_name, contact_email")
     .eq("id", id)
     .single();
 
@@ -204,10 +211,14 @@ export async function enviarDocumentoIdentidade(id: string, path: string): Promi
 export async function definirRecebimento(
   id: string,
   metodo: "pix" | "transferencia",
-  detalhes: string
+  detalhes: string,
+  metodoEnvio: MetodoEnvioTradeIn
 ): Promise<{ error?: string }> {
   if (detalhes.trim().length < 4) {
     return { error: metodo === "pix" ? "Informe uma chave Pix válida." : "Informe os dados bancários." };
+  }
+  if (metodoEnvio !== "correios" && metodoEnvio !== "loja") {
+    return { error: "Escolha Correios ou entrega na loja." };
   }
 
   const resultado = await buscarSolicitacaoPropria(id);
@@ -222,15 +233,22 @@ export async function definirRecebimento(
   }
 
   const supabaseAdmin = createAdminClient();
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("trade_in_requests")
     .update({
       payment_method: metodo,
       payment_pix_key: metodo === "pix" ? detalhes.trim() : null,
       payment_bank_details: metodo === "transferencia" ? detalhes.trim() : null,
+      shipping_method: metodoEnvio,
+      process_stage: "awaiting_shipment",
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+
+  if (error) {
+    console.error("[vender/formulario] falha ao salvar envio:", error.message);
+    return { error: "Não foi possível salvar a forma de envio. Atualize as migrações do Supabase e tente novamente." };
+  }
 
   // Item 02: instruções de postagem automáticas por e-mail assim que a
   // forma de recebimento é confirmada.
@@ -242,8 +260,75 @@ export async function definirRecebimento(
     brand: s.brand,
     model: s.model,
     valorCents: s.final_value_cents ?? s.estimated_value_cents ?? 0,
+    shippingMethod: metodoEnvio,
   });
 
   revalidatePath("/vender/formulario");
+  return {};
+}
+
+export async function definirMetodoEnvio(id: string, metodoEnvio: MetodoEnvioTradeIn): Promise<{ error?: string }> {
+  if (metodoEnvio !== "correios" && metodoEnvio !== "loja") {
+    return { error: "Escolha Correios ou entrega na loja." };
+  }
+
+  const resultado = await buscarSolicitacaoPropria(id);
+  if ("erro" in resultado) return { error: resultado.erro };
+  const solicitacao = resultado.solicitacao;
+  if (!solicitacao.payment_method || !solicitacao.documento_selfie_uploaded_at) {
+    return { error: "Conclua as etapas anteriores antes de escolher o envio." };
+  }
+
+  const supabaseAdmin = createAdminClient();
+  const { error } = await supabaseAdmin
+    .from("trade_in_requests")
+    .update({ shipping_method: metodoEnvio, process_stage: "awaiting_shipment", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[vender/formulario] falha ao salvar método de envio:", error.message);
+    return { error: "Não foi possível salvar a forma de envio. Atualize as migrações do Supabase e tente novamente." };
+  }
+
+  await enviarEmailInstrucoesEnvio({
+    paraEmail: solicitacao.contact_email,
+    nomeCliente: solicitacao.contact_name,
+    solicitacaoId: id,
+    brand: solicitacao.brand,
+    model: solicitacao.model,
+    valorCents: solicitacao.final_value_cents ?? solicitacao.estimated_value_cents ?? 0,
+    shippingMethod: metodoEnvio,
+  });
+
+  revalidatePath("/vender/formulario");
+  revalidatePath("/admin/vender");
+  return {};
+}
+
+export async function registrarRastreioCorreios(id: string, codigo: string): Promise<{ error?: string }> {
+  const codigoLimpo = codigo.trim().toUpperCase().replace(/\s/g, "");
+  if (!/^[A-Z0-9-]{8,30}$/.test(codigoLimpo)) {
+    return { error: "Informe um código de rastreio válido, com 8 a 30 letras ou números." };
+  }
+
+  const resultado = await buscarSolicitacaoPropria(id);
+  if ("erro" in resultado) return { error: resultado.erro };
+  if (resultado.solicitacao.shipping_method !== "correios") {
+    return { error: "O código de rastreio só se aplica ao envio pelos Correios." };
+  }
+
+  const supabaseAdmin = createAdminClient();
+  const { error } = await supabaseAdmin
+    .from("trade_in_requests")
+    .update({ shipping_tracking_code: codigoLimpo, process_stage: "in_transit", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[vender/formulario] falha ao salvar rastreio:", error.message);
+    return { error: "Não foi possível salvar o rastreio. Atualize as migrações do Supabase e tente novamente." };
+  }
+
+  revalidatePath("/vender/formulario");
+  revalidatePath("/admin/vender");
   return {};
 }

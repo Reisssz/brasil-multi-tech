@@ -19,13 +19,14 @@ export async function enviarEmailInstrucoesEnvio(params: {
   brand: string;
   model: string;
   valorCents: number;
+  shippingMethod: "correios" | "loja";
 }) {
   if (process.env.FEATURE_EMAIL_VENDER_INSTRUCOES !== "true") {
     console.info("[email:vender-instrucoes] feature desativada — envio pulado.");
     return;
   }
 
-  const { paraEmail, nomeCliente, solicitacaoId, brand, model, valorCents } = params;
+  const { paraEmail, nomeCliente, solicitacaoId, brand, model, valorCents, shippingMethod } = params;
   const primeiroNome = nomeCliente.trim().split(" ")[0] || nomeCliente;
   const codigo = solicitacaoId.slice(0, 8).toUpperCase();
 
@@ -46,7 +47,7 @@ export async function enviarEmailInstrucoesEnvio(params: {
             <tr>
               <td style="padding:36px 32px 8px 32px;">
                 <h1 style="margin:0 0 12px 0;font-size:20px;font-weight:700;color:#14161a;">
-                  Falta só enviar o aparelho, ${escapeHtml(primeiroNome)}!
+                  ${shippingMethod === "correios" ? `Falta só postar o aparelho, ${escapeHtml(primeiroNome)}!` : `Falta entregar o aparelho na loja, ${escapeHtml(primeiroNome)}!`}
                 </h1>
                 <p style="margin:0 0 20px 0;font-size:14px;line-height:1.6;color:#5b5f6a;">
                   Recebemos sua confirmação da venda do <strong>${escapeHtml(brand)} ${escapeHtml(model)}</strong>
@@ -58,7 +59,7 @@ export async function enviarEmailInstrucoesEnvio(params: {
             <tr>
               <td style="padding:0 32px;">
                 <table role="presentation" width="100%" style="background-color:#fafafa;border-radius:12px;padding:16px 18px;">
-                  <tr><td style="font-size:12px;color:#9a9ea8;padding-bottom:4px;">Código de referência (escreva no pacote)</td></tr>
+                  <tr><td style="font-size:12px;color:#9a9ea8;padding-bottom:4px;">${shippingMethod === "correios" ? "Código de referência (escreva no pacote)" : "Código de referência (apresente à equipe)"}</td></tr>
                   <tr><td style="font-size:20px;font-weight:700;color:#14161a;letter-spacing:1px;">#${codigo}</td></tr>
                 </table>
               </td>
@@ -69,14 +70,16 @@ export async function enviarEmailInstrucoesEnvio(params: {
                 <ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#5b5f6a;">
                   <li>Embale o aparelho com cuidado (de preferência na caixa original ou com plástico bolha).</li>
                   <li>Escreva o código <strong>#${codigo}</strong> em um papel dentro da caixa.</li>
-                  <li>Envie via Correios ou transportadora de sua preferência para o endereço abaixo.</li>
+                  ${shippingMethod === "correios"
+                    ? "<li>Envie pelos Correios usando uma modalidade com rastreamento e guarde o comprovante.</li><li>Depois da postagem, informe o código de rastreio na sua área de acompanhamento.</li>"
+                    : "<li>Entregue o aparelho pessoalmente na loja física da Brasil Multi Tech.</li><li>Informe o código de referência à equipe no momento da entrega.</li>"}
                 </ol>
               </td>
             </tr>
             <tr>
               <td style="padding:16px 32px 32px 32px;">
                 <table role="presentation" width="100%" style="background-color:#fafafa;border-radius:12px;padding:16px 18px;">
-                  <tr><td style="font-size:12px;color:#9a9ea8;padding-bottom:4px;">Endereço de entrega</td></tr>
+                  <tr><td style="font-size:12px;color:#9a9ea8;padding-bottom:4px;">${shippingMethod === "correios" ? "Endereço para postagem" : "Endereço da loja física"}</td></tr>
                   <tr><td style="font-size:13px;color:#14161a;line-height:1.5;">${escapeHtml(SITE.address.line1)}<br/>${escapeHtml(SITE.address.line2)}<br/>CEP ${escapeHtml(SITE.address.zip)}</td></tr>
                 </table>
               </td>
