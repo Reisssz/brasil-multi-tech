@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { adicionarBannerPrincipal, atualizarImagemMobileBanner, criarUrlUploadBanner, type EstadoBanner } from "./actions";
 
-type ImagemEnviada = { url: string; width: number; height: number } | null;
+type ImagemEnviada = { url: string; width: number; height: number; nome: string } | null;
 
 /** Lê a largura/altura reais do arquivo no navegador antes do upload, pra não depender do Storage/sharp pra isso. */
 function medirImagem(arquivo: File): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
     const url = URL.createObjectURL(arquivo);
     const img = new Image();
     img.onload = () => {
@@ -72,7 +72,7 @@ export function BannerUploadForm() {
       }
 
       const { data } = supabase.storage.from("banners").getPublicUrl(path);
-      const resultado = { url: data.publicUrl, width, height };
+      const resultado = { url: data.publicUrl, width, height, nome: arquivo.name };
       if (tipo === "desktop") setDesktop(resultado);
       else setMobile(resultado);
     } catch {
@@ -88,6 +88,7 @@ export function BannerUploadForm() {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <CampoImagem
+          id={`banner-desktop-${chaveInputs}`}
           key={`desktop-${chaveInputs}`}
           rotulo="Imagem principal (desktop) *"
           ajuda="Aparece no topo do site em telas de computador. Use uma imagem larga (ex: 1920×640)."
@@ -97,6 +98,7 @@ export function BannerUploadForm() {
           onArquivo={(f) => enviarArquivo(f, "desktop")}
         />
         <CampoImagem
+          id={`banner-mobile-${chaveInputs}`}
           key={`mobile-${chaveInputs}`}
           rotulo="Imagem para celular *"
           ajuda="Obrigatória. Essa imagem será exibida no celular; a versão desktop não aparece em telas mobile."
@@ -142,6 +144,7 @@ export function BannerUploadForm() {
 }
 
 function CampoImagem({
+  id,
   rotulo,
   ajuda,
   imagem,
@@ -149,6 +152,7 @@ function CampoImagem({
   desabilitado,
   onArquivo,
 }: {
+  id: string;
   rotulo: string;
   ajuda: string;
   imagem: ImagemEnviada;
@@ -157,31 +161,50 @@ function CampoImagem({
   onArquivo: (arquivo: File) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm">
+    <div className="flex flex-col gap-1.5 text-sm">
       <span className="font-medium text-foreground">{rotulo}</span>
       <span className="text-xs text-muted">{ajuda}</span>
-      <input
-        type="file"
-        accept="image/png,image/jpeg,image/webp,image/avif"
-        disabled={desabilitado}
-        onChange={(e) => {
-          const arquivo = e.target.files?.[0];
-          if (arquivo) onArquivo(arquivo);
-        }}
-        className="text-xs"
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          id={id}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/avif"
+          disabled={desabilitado}
+          onChange={(e) => {
+            const arquivo = e.target.files?.[0];
+            if (arquivo) onArquivo(arquivo);
+            e.target.value = "";
+          }}
+          className="peer sr-only"
+        />
+        <label
+          htmlFor={id}
+          className={`inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 ${
+            desabilitado
+              ? "cursor-not-allowed border-border bg-[#f7f8fa] text-muted"
+              : "border-brand bg-brand text-brand-foreground hover:bg-brand-dark"
+          }`}
+        >
+          <UploadIcon />
+          {carregando ? "Enviando…" : imagem ? "Trocar imagem" : "Selecionar imagem"}
+        </label>
+        <span className="max-w-full truncate text-xs text-muted" aria-live="polite">
+          {imagem?.nome ?? "Nenhum arquivo selecionado"}
+        </span>
+      </div>
       {carregando && <span className="text-xs text-muted">Enviando…</span>}
       {imagem && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imagem.url} alt="" className="mt-1 h-20 w-full rounded-lg object-cover border border-border" />
       )}
-    </label>
+    </div>
   );
 }
 
 export function BannerMobileEditor({ bannerId, imagemAtual }: { bannerId: string; imagemAtual: string | null }) {
   const router = useRouter();
   const [preview, setPreview] = useState(imagemAtual);
+  const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
@@ -213,6 +236,7 @@ export function BannerMobileEditor({ bannerId, imagemAtual }: { bannerId: string
       }
 
       setPreview(resultado.url);
+      setNomeArquivo(arquivo.name);
       setSucesso(true);
       router.refresh();
     } catch {
@@ -232,9 +256,8 @@ export function BannerMobileEditor({ bannerId, imagemAtual }: { bannerId: string
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#f0f1f4] text-xs text-muted">sem mobile</span>
         )}
         <div className="min-w-0">
-          <label htmlFor={`banner-mobile-${bannerId}`} className="block text-sm font-semibold text-foreground">
-            {preview ? "Substituir imagem mobile" : "Anexar imagem mobile"}
-          </label>
+          <p className="text-sm font-semibold text-foreground">Versão para celular</p>
+          <p className="truncate text-xs text-muted">{nomeArquivo ?? (preview ? "Imagem mobile cadastrada" : "Nenhuma imagem selecionada")}</p>
           <p className="text-xs text-muted">A versão desktop não será exibida em celular.</p>
         </div>
       </div>
@@ -248,11 +271,28 @@ export function BannerMobileEditor({ bannerId, imagemAtual }: { bannerId: string
           if (arquivo) void enviarArquivo(arquivo);
           event.target.value = "";
         }}
-        className="max-w-full text-xs disabled:opacity-50"
+        className="peer sr-only"
       />
+      <label
+        htmlFor={`banner-mobile-${bannerId}`}
+        className={`inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 ${
+          enviando ? "cursor-not-allowed border-border bg-[#f7f8fa] text-muted" : "border-border bg-surface text-foreground hover:bg-[#f7f8fa]"
+        }`}
+      >
+        <UploadIcon />
+        {enviando ? "Enviando…" : preview ? "Trocar imagem" : "Anexar imagem"}
+      </label>
       {enviando && <span className="text-xs text-muted">Enviando e salvando…</span>}
       {sucesso && <span className="text-xs font-semibold text-success">Versão mobile salva.</span>}
       {erro && <p className="w-full text-xs text-red-600">{erro}</p>}
     </div>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 10.5V2.75M5.25 5.5 8 2.75l2.75 2.75M2.75 9.75v2.5c0 .55.45 1 1 1h8.5c.55 0 1-.45 1-1v-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

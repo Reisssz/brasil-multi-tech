@@ -33,7 +33,7 @@ export default async function AdminBanners() {
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
       <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-bold text-foreground">Banner principal</h1>
-        <Link href="/admin" className="text-sm font-semibold text-brand-dark hover:underline shrink-0">
+        <Link href="/admin" className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition-colors hover:bg-[#f7f8fa]">
           ← Voltar
         </Link>
       </div>
@@ -133,7 +133,7 @@ function LinhaBannerItem({ banner, indice, total }: { banner: LinhaBanner; indic
             </button>
           </form>
           <form action={removerBannerPrincipal.bind(null, banner.id)}>
-            <button type="submit" className="h-8 rounded-lg px-3 text-xs font-medium text-red-500 hover:underline">
+            <button type="submit" className="h-8 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100">
               Remover
             </button>
           </form>
