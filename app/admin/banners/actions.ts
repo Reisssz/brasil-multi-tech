@@ -93,6 +93,39 @@ export async function adicionarBannerPrincipal(_estadoAnterior: EstadoBanner, fo
   return null;
 }
 
+export async function atualizarImagemMobileBanner(
+  id: string,
+  caminho: string,
+  largura: number,
+  altura: number
+): Promise<{ erro?: string; url?: string }> {
+  const supabase = await createClient();
+  if (!(await verificarAdmin(supabase))) return { erro: "Acesso negado." };
+  if (!caminho.startsWith("principal/") || !Number.isInteger(largura) || !Number.isInteger(altura) || largura <= 0 || altura <= 0) {
+    return { erro: "Arquivo ou dimensões da imagem inválidos." };
+  }
+
+  const supabaseAdmin = createAdminClient();
+  const { data } = supabaseAdmin.storage.from("banners").getPublicUrl(caminho);
+  const { error } = await supabaseAdmin
+    .from("banners_principais")
+    .update({
+      imagem_mobile_url: data.publicUrl,
+      imagem_mobile_largura: largura,
+      imagem_mobile_altura: altura,
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[admin/banners] falha ao atualizar mobile:", error.message);
+    return { erro: "Não foi possível salvar a versão mobile do banner." };
+  }
+
+  revalidatePath("/admin/banners");
+  revalidatePath("/");
+  return { url: data.publicUrl };
+}
+
 export async function removerBannerPrincipal(id: string) {
   const supabase = await createClient();
   if (!(await verificarAdmin(supabase))) return;

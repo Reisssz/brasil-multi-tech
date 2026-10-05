@@ -23,25 +23,47 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
   const heroId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const elapsedRef = useRef(0);
   const barRefs = useRef<Record<number, HTMLSpanElement | null>>({});
+  const mobileBanners = banners.flatMap((banner, index) => {
+    const src = banner.mobileSrc ?? bannersMobile[index]?.src;
+    if (!src) return [];
+    return [{
+      ...banner,
+      src,
+      width: banner.mobileSrc ? banner.mobileWidth : bannersMobile[index]?.width,
+      height: banner.mobileSrc ? banner.mobileHeight : bannersMobile[index]?.height,
+    }];
+  });
+  const slides = isMobile ? mobileBanners : banners;
+  const activeSlide = slides.length > 0 ? active % slides.length : 0;
+
+  useEffect(() => {
+    const breakpoint = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX - 1}px)`);
+    const atualizarViewport = () => setIsMobile(breakpoint.matches);
+    atualizarViewport();
+    breakpoint.addEventListener("change", atualizarViewport);
+    return () => breakpoint.removeEventListener("change", atualizarViewport);
+  }, []);
 
   const goTo = useCallback(
     (i: number) => {
-      setActive(((i % banners.length) + banners.length) % banners.length);
+      if (slides.length === 0) return;
+      setActive(((i % slides.length) + slides.length) % slides.length);
     },
-    [banners.length]
+    [slides.length]
   );
-  const next = useCallback(() => goTo(active + 1), [active, goTo]);
-  const prev = useCallback(() => goTo(active - 1), [active, goTo]);
+  const next = useCallback(() => goTo(activeSlide + 1), [activeSlide, goTo]);
+  const prev = useCallback(() => goTo(activeSlide - 1), [activeSlide, goTo]);
 
   useEffect(() => {
     elapsedRef.current = 0;
-  }, [active]);
+  }, [active, isMobile]);
 
   useEffect(() => {
-    if (paused || banners.length <= 1) return;
+    if (paused || slides.length <= 1) return;
     let raf = 0;
     const start = performance.now() - elapsedRef.current;
 
@@ -49,27 +71,27 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
       const elapsed = now - start;
       elapsedRef.current = elapsed;
       const pct = Math.min((elapsed / SLIDE_DURATION) * 100, 100);
-      const bar = barRefs.current[active];
+      const bar = barRefs.current[activeSlide];
       if (bar) bar.style.width = `${pct}%`;
       if (elapsed >= SLIDE_DURATION) {
-        goTo(active + 1);
+        goTo(activeSlide + 1);
       } else {
         raf = requestAnimationFrame(tick);
       }
     }
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [active, paused, goTo, banners.length]);
+  }, [active, activeSlide, paused, goTo, slides.length]);
 
   useEffect(() => {
-    if (banners.length <= 1) return;
+    if (slides.length <= 1) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") prev();
       if (e.key === "ArrowRight") next();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [prev, next, banners.length]);
+  }, [prev, next, slides.length]);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
@@ -87,18 +109,11 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
     }
   }
 
-  if (banners.length === 0) return null;
+  if (slides.length === 0) return null;
 
-  const bannerAtivo = banners[active];
-  const mobileAtivo = bannerAtivo.mobileSrc
-    ? { width: bannerAtivo.mobileWidth, height: bannerAtivo.mobileHeight }
-    : bannersMobile[active]
-      ? { width: bannersMobile[active].width, height: bannersMobile[active].height }
-      : null;
+  const bannerAtivo = slides[active];
   const ratioDesktop =
     bannerAtivo.width && bannerAtivo.height ? bannerAtivo.width / bannerAtivo.height : 16 / 9;
-  const ratioMobile =
-    mobileAtivo?.width && mobileAtivo.height ? mobileAtivo.width / mobileAtivo.height : ratioDesktop;
   const boxClassName = `relative w-full overflow-hidden hero-box-${heroId}`;
 
   return (
@@ -116,9 +131,6 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
 
       <style>{`
         .hero-box-${heroId} { aspect-ratio: ${ratioDesktop}; }
-        @media (max-width: ${MOBILE_BREAKPOINT_PX - 1}px) {
-          .hero-box-${heroId} { aspect-ratio: ${ratioMobile}; }
-        }
       `}</style>
 
       <div className="relative w-full">
@@ -127,14 +139,12 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
               Sem zoom/ken burns e sem crossfade — só o deslocamento. */}
           <div
             className="flex h-full transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${active * 100}%)` }}
+            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
           >
-            {banners.map((banner, i) => {
+            {slides.map((banner, i) => {
               // Mobile embutido no slide (cadastro pelo admin) tem prioridade;
-              // sem isso, cai no pareamento por ORDEM do modo antigo (1º com
-              // 1º, 2º com 2º...) — se não existir nenhum dos dois, o slide
-              // usa a imagem principal normalmente.
-              const srcMobile = banner.mobileSrc ?? bannersMobile[i]?.src;
+              // banners sem versão mobile não entram na sequência mobile.
+              const srcMobile = isMobile ? undefined : banner.mobileSrc ?? bannersMobile[i]?.src;
               const img = (
                 <picture className="block h-full w-full">
                   {srcMobile && (
@@ -145,18 +155,18 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
                     alt=""
                     loading={i === 0 ? "eager" : "lazy"}
                     fetchPriority={i === 0 ? "high" : "auto"}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${!isMobile && !srcMobile ? "max-sm:hidden" : ""}`}
                   />
                 </picture>
               );
 
               return (
-                <div key={banner.src} className="w-full h-full shrink-0" aria-hidden={i !== active}>
+                <div key={banner.src} className="w-full h-full shrink-0" aria-hidden={i !== activeSlide}>
                   {banner.href ? (
                     <Link
                       href={banner.href}
                       className="block w-full h-full cursor-pointer"
-                      tabIndex={i === active ? 0 : -1}
+                      tabIndex={i === activeSlide ? 0 : -1}
                     >
                       {img}
                     </Link>
@@ -168,7 +178,7 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
             })}
           </div>
 
-          {banners.length > 1 && (
+          {slides.length > 1 && (
             <>
               <button
                 onClick={prev}
@@ -190,16 +200,16 @@ export function Hero({ banners, bannersMobile = [] }: { banners: Banner[]; banne
               </button>
 
               <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-                {banners.map((_, i) => (
+                {slides.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => goTo(i)}
                     aria-label={`Ir para banner ${i + 1}`}
                     className={`relative h-1.5 rounded-full overflow-hidden bg-white/40 transition-all ${
-                      i === active ? "w-8" : "w-1.5 hover:bg-white/60"
+                      i === activeSlide ? "w-8" : "w-1.5 hover:bg-white/60"
                     }`}
                   >
-                    {i === active && (
+                    {i === activeSlide && (
                       <span
                         ref={(el) => {
                           barRefs.current[i] = el;

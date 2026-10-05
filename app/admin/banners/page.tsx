@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BannerUploadForm } from "./BannerUploadForm";
+import { BannerMobileEditor, BannerUploadForm } from "./BannerUploadForm";
 import { alternarAtivoBannerPrincipal, moverBannerPrincipal, removerBannerPrincipal } from "./actions";
 
 type LinhaBanner = {
@@ -91,52 +91,55 @@ alter table public.banners_principais enable row level security;
 
 function LinhaBannerItem({ banner, indice, total }: { banner: LinhaBanner; indice: number; total: number }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={banner.imagem_desktop_url} alt="" className="h-14 w-24 shrink-0 rounded-lg object-cover bg-[#f0f1f4]" />
+    <div className="rounded-2xl border border-border bg-surface p-3">
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={banner.imagem_desktop_url} alt="" className="h-14 w-24 shrink-0 rounded-lg object-cover bg-[#f0f1f4]" />
 
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground truncate">{banner.href || "Sem link"}</p>
-        <p className="text-xs text-muted">{banner.imagem_mobile_url ? "Com versão mobile própria" : "Sem versão mobile própria"}</p>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground truncate">{banner.href || "Sem link"}</p>
+          <p className="text-xs text-muted">{banner.imagem_mobile_url ? "Com versão mobile própria" : "Sem versão mobile própria"}</p>
+        </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        <form action={moverBannerPrincipal.bind(null, banner.id, "up")}>
-          <button
-            type="submit"
-            disabled={indice === 0}
-            aria-label="Mover para cima"
-            className="h-8 w-8 rounded-lg border border-border text-foreground hover:bg-[#f7f8fa] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ↑
-          </button>
-        </form>
-        <form action={moverBannerPrincipal.bind(null, banner.id, "down")}>
-          <button
-            type="submit"
-            disabled={indice === total - 1}
-            aria-label="Mover para baixo"
-            className="h-8 w-8 rounded-lg border border-border text-foreground hover:bg-[#f7f8fa] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            ↓
-          </button>
-        </form>
-        <form action={alternarAtivoBannerPrincipal.bind(null, banner.id, banner.ativo)}>
-          <button
-            type="submit"
-            className={`h-8 rounded-full px-3 text-xs font-semibold ${
-              banner.ativo ? "bg-success-light text-success" : "bg-[#eef0f3] text-muted"
-            }`}
-          >
-            {banner.ativo ? "Ativo" : "Inativo"}
-          </button>
-        </form>
-        <form action={removerBannerPrincipal.bind(null, banner.id)}>
-          <button type="submit" className="h-8 rounded-lg px-3 text-xs font-medium text-red-500 hover:underline">
-            Remover
-          </button>
-        </form>
+        <div className="flex items-center gap-1 shrink-0">
+          <form action={moverBannerPrincipal.bind(null, banner.id, "up")}>
+            <button
+              type="submit"
+              disabled={indice === 0}
+              aria-label="Mover para cima"
+              className="h-8 w-8 rounded-lg border border-border text-foreground hover:bg-[#f7f8fa] disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ↑
+            </button>
+          </form>
+          <form action={moverBannerPrincipal.bind(null, banner.id, "down")}>
+            <button
+              type="submit"
+              disabled={indice === total - 1}
+              aria-label="Mover para baixo"
+              className="h-8 w-8 rounded-lg border border-border text-foreground hover:bg-[#f7f8fa] disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ↓
+            </button>
+          </form>
+          <form action={alternarAtivoBannerPrincipal.bind(null, banner.id, banner.ativo)}>
+            <button
+              type="submit"
+              className={`h-8 rounded-full px-3 text-xs font-semibold ${
+                banner.ativo ? "bg-success-light text-success" : "bg-[#eef0f3] text-muted"
+              }`}
+            >
+              {banner.ativo ? "Ativo" : "Inativo"}
+            </button>
+          </form>
+          <form action={removerBannerPrincipal.bind(null, banner.id)}>
+            <button type="submit" className="h-8 rounded-lg px-3 text-xs font-medium text-red-500 hover:underline">
+              Remover
+            </button>
+          </form>
+        </div>
       </div>
+      <BannerMobileEditor bannerId={banner.id} imagemAtual={banner.imagem_mobile_url} />
     </div>
   );
 }

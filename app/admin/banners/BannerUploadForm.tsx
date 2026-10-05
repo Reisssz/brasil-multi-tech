@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { adicionarBannerPrincipal, criarUrlUploadBanner, type EstadoBanner } from "./actions";
+import { adicionarBannerPrincipal, atualizarImagemMobileBanner, criarUrlUploadBanner, type EstadoBanner } from "./actions";
 
 type ImagemEnviada = { url: string; width: number; height: number } | null;
 
@@ -32,12 +33,18 @@ export function BannerUploadForm() {
   const [chaveInputs, setChaveInputs] = useState(0);
   const eraPending = useRef(false);
 
+  function limparFormulario() {
+    setDesktop(null);
+    setMobile(null);
+    setErroUpload(null);
+    setChaveInputs((k) => k + 1);
+  }
+
   useEffect(() => {
     if (eraPending.current && !pending && !estado?.erro) {
       limparFormulario();
     }
     eraPending.current = pending;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending, estado]);
 
   async function enviarArquivo(arquivo: File, tipo: "desktop" | "mobile") {
@@ -75,13 +82,6 @@ export function BannerUploadForm() {
     }
   }
 
-  function limparFormulario() {
-    setDesktop(null);
-    setMobile(null);
-    setErroUpload(null);
-    setChaveInputs((k) => k + 1);
-  }
-
   return (
     <form action={formAction} className="rounded-2xl border border-border bg-surface p-5 flex flex-col gap-4">
       <h2 className="font-semibold text-foreground">Adicionar banner</h2>
@@ -93,14 +93,16 @@ export function BannerUploadForm() {
           ajuda="Aparece no topo do site em telas de computador. Use uma imagem larga (ex: 1920×640)."
           imagem={desktop}
           carregando={enviando === "desktop"}
+          desabilitado={enviando !== null || pending}
           onArquivo={(f) => enviarArquivo(f, "desktop")}
         />
         <CampoImagem
           key={`mobile-${chaveInputs}`}
-          rotulo="Imagem para celular (opcional)"
-          ajuda="Se não enviar, o celular mostra a mesma imagem do desktop, cortada para caber na tela."
+          rotulo="Imagem para celular *"
+          ajuda="Obrigatória. Essa imagem será exibida no celular; a versão desktop não aparece em telas mobile."
           imagem={mobile}
           carregando={enviando === "mobile"}
+          desabilitado={enviando !== null || pending}
           onArquivo={(f) => enviarArquivo(f, "mobile")}
         />
       </div>
@@ -124,10 +126,13 @@ export function BannerUploadForm() {
 
       {erroUpload && <p className="text-sm text-red-600">{erroUpload}</p>}
       {estado?.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
+      {(!desktop || !mobile) && (
+        <p className="text-xs text-muted">Envie as imagens desktop e mobile para habilitar a inclusão do banner.</p>
+      )}
 
       <button
         type="submit"
-        disabled={!desktop || pending || enviando !== null}
+        disabled={!desktop || !mobile || pending || enviando !== null}
         className="self-start inline-flex h-10 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed px-5 text-sm font-semibold text-brand-foreground transition-colors"
       >
         {pending ? "Salvando…" : "+ Adicionar banner"}
@@ -141,12 +146,14 @@ function CampoImagem({
   ajuda,
   imagem,
   carregando,
+  desabilitado,
   onArquivo,
 }: {
   rotulo: string;
   ajuda: string;
   imagem: ImagemEnviada;
   carregando: boolean;
+  desabilitado: boolean;
   onArquivo: (arquivo: File) => void;
 }) {
   return (
@@ -156,6 +163,7 @@ function CampoImagem({
       <input
         type="file"
         accept="image/png,image/jpeg,image/webp,image/avif"
+        disabled={desabilitado}
         onChange={(e) => {
           const arquivo = e.target.files?.[0];
           if (arquivo) onArquivo(arquivo);
@@ -168,5 +176,83 @@ function CampoImagem({
         <img src={imagem.url} alt="" className="mt-1 h-20 w-full rounded-lg object-cover border border-border" />
       )}
     </label>
+  );
+}
+
+export function BannerMobileEditor({ bannerId, imagemAtual }: { bannerId: string; imagemAtual: string | null }) {
+  const router = useRouter();
+  const [preview, setPreview] = useState(imagemAtual);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState(false);
+
+  async function enviarArquivo(arquivo: File) {
+    setEnviando(true);
+    setErro(null);
+    setSucesso(false);
+    try {
+      const { width, height } = await medirImagem(arquivo);
+      const assinatura = await criarUrlUploadBanner(arquivo.name);
+      if (assinatura.erro || !assinatura.path || !assinatura.token) {
+        setErro(assinatura.erro ?? "Não foi possível preparar o upload.");
+        return;
+      }
+
+      const supabase = createClient();
+      const { error: erroUpload } = await supabase.storage.from("banners").uploadToSignedUrl(assinatura.path, assinatura.token, arquivo);
+      if (erroUpload) {
+        console.error("[admin/banners] falha no upload mobile:", erroUpload.message);
+        setErro("Não foi possível enviar a imagem mobile. Tente novamente.");
+        return;
+      }
+
+      const resultado = await atualizarImagemMobileBanner(bannerId, assinatura.path, width, height);
+      if (resultado.erro || !resultado.url) {
+        setErro(resultado.erro ?? "Não foi possível salvar a imagem mobile.");
+        return;
+      }
+
+      setPreview(resultado.url);
+      setSucesso(true);
+      router.refresh();
+    } catch {
+      setErro("Não foi possível ler ou enviar essa imagem. Tente outro arquivo.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="Prévia mobile" className="h-14 w-14 shrink-0 rounded-lg object-cover bg-[#f0f1f4]" />
+        ) : (
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#f0f1f4] text-xs text-muted">sem mobile</span>
+        )}
+        <div className="min-w-0">
+          <label htmlFor={`banner-mobile-${bannerId}`} className="block text-sm font-semibold text-foreground">
+            {preview ? "Substituir imagem mobile" : "Anexar imagem mobile"}
+          </label>
+          <p className="text-xs text-muted">A versão desktop não será exibida em celular.</p>
+        </div>
+      </div>
+      <input
+        id={`banner-mobile-${bannerId}`}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/avif"
+        disabled={enviando}
+        onChange={(event) => {
+          const arquivo = event.target.files?.[0];
+          if (arquivo) void enviarArquivo(arquivo);
+          event.target.value = "";
+        }}
+        className="max-w-full text-xs disabled:opacity-50"
+      />
+      {enviando && <span className="text-xs text-muted">Enviando e salvando…</span>}
+      {sucesso && <span className="text-xs font-semibold text-success">Versão mobile salva.</span>}
+      {erro && <p className="w-full text-xs text-red-600">{erro}</p>}
+    </div>
   );
 }
