@@ -173,6 +173,12 @@ export async function POST(request: NextRequest) {
   });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN ?? "";
+  const credentialMode = accessToken.startsWith("APP_USR-")
+    ? "production"
+    : accessToken.startsWith("TEST-")
+      ? "test"
+      : "unknown";
 
   const preferencia = await mpPreference.create({
     body: {
@@ -231,6 +237,10 @@ export async function POST(request: NextRequest) {
 
   console.info("[mercadopago:checkout-pro] preferência criada", {
     id: preferencia.id,
+    collectorId: preferencia.collector_id ?? null,
+    clientId: preferencia.client_id ?? null,
+    siteId: preferencia.site_id ?? null,
+    credentialMode,
     paymentMethods: preferencia.payment_methods ?? null,
     purpose: preferencia.purpose ?? null,
     total: totalCents / 100,
@@ -241,6 +251,10 @@ export async function POST(request: NextRequest) {
     const preferenciaSalva = await mpPreference.get({ preferenceId: preferencia.id });
     console.info("[mercadopago:checkout-pro] preferência conferida via GET", {
       id: preferenciaSalva.id,
+      collectorId: preferenciaSalva.collector_id ?? null,
+      clientId: preferenciaSalva.client_id ?? null,
+      siteId: preferenciaSalva.site_id ?? null,
+      credentialMode,
       paymentMethods: preferenciaSalva.payment_methods ?? null,
       purpose: preferenciaSalva.purpose ?? null,
       total: preferenciaSalva.items?.reduce((total, item) => total + (item.unit_price ?? 0) * (item.quantity ?? 0), 0),
