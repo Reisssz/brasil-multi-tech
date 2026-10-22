@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, melhorParcelaComJuros, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, getPixPriceCents } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { Badge } from "../ui/Badge";
@@ -13,10 +13,6 @@ export function ProductCard({ product }: { product: Product }) {
   const priceCents = getMinPriceCents(product);
   const pixPriceCents = product.pixDescontoPercent ? getPixPriceCents(priceCents, product.pixDescontoPercent) : null;
   const temDesconto = !!mainVariant.compareAtCents && mainVariant.compareAtCents > mainVariant.priceCents;
-  const opcoesParcelamento = product.parcelamentoHabilitado ? calcularParcelamento(priceCents) : [];
-  const parcelaSemJuros = melhorParcelaSemJuros(opcoesParcelamento);
-  const parcelaComJuros = melhorParcelaComJuros(opcoesParcelamento);
-
   return (
     <Link
       href={`/produto/${product.slug}?variante=${mainVariant.id}`}
@@ -62,16 +58,13 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
           <span className="text-[11px] text-muted leading-tight min-h-[1.2em]">{pixPriceCents ? "no pix" : " "}</span>
           <span className="flex items-center gap-1 text-[10.5px] text-muted tabular-nums leading-snug min-h-[2.4em]">
-            {parcelaSemJuros && (
+            {product.parcelamentoHabilitado && (
               <>
                 <svg width="12" height="12" viewBox="0 0 20 20" fill="none" className="shrink-0 self-start mt-0.5">
                   <rect x="2.5" y="5" width="15" height="10" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
                   <path d="M2.5 8.2h15" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
-                <span>
-                  Até {parcelaSemJuros.count}x de {formatBRL(parcelaSemJuros.installmentCents)} s/ juros
-                  {parcelaComJuros && <> ou {parcelaComJuros.count}x de {formatBRL(parcelaComJuros.installmentCents)} c/ juros</>}
-                </span>
+                <span>Até 12x no cartão; condições e juros no Mercado Pago.</span>
               </>
             )}
           </span>

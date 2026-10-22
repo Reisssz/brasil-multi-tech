@@ -3,13 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
-import { formatBRL, calcularParcelamento, MAX_PARCELAS_COM_JUROS } from "@/lib/pricing";
+import { formatBRL } from "@/lib/pricing";
 
 interface CriarPagamentoBody {
   items: CartItem[];
   paymentMethod: "pix" | "boleto" | "cartao";
-  /** Número de parcelas escolhido no checkout (só relevante quando paymentMethod === "cartao"). */
-  installments?: number;
   customerName: string;
   cpf: string;
   phone: string;
@@ -122,23 +120,11 @@ export async function POST(request: NextRequest) {
   );
   const freteCents = body.frete?.valorCentavos ?? 0;
 
-  // O valor cobrado na preferência do Mercado Pago é sempre o de face
-  // (subtotal + frete), em qualquer forma de pagamento e qualquer número de
-  // parcelas: de 7x a 18x quem cobra e recebe os juros do comprador é o
-  // próprio Mercado Pago/bandeira do cartão (repassados ao emissor), não a
-  // loja — a loja sempre recebe como se fosse à vista (ver lib/pricing.ts).
-  // Só o número de parcelas escolhido é registrado aqui; o valor de cada
-  // parcela com juros é calculado e cobrado pelo Mercado Pago na hora.
+  // A preferência usa o valor-base dos itens e do frete; as condições de
+  // parcelas e juros são aplicadas pelo Mercado Pago conforme a conta.
+  // O webhook substitui parcelas=1 pelo número efetivamente pago.
   const totalCents = subtotalCents + freteCents;
-  let parcelas = 1;
-
-  if (body.paymentMethod === "cartao") {
-    const opcoes = calcularParcelamento(subtotalCents);
-    const escolhida = opcoes.find((o) => o.count === (body.installments ?? 1)) ?? opcoes[0];
-    if (escolhida) {
-      parcelas = escolhida.count;
-    }
-  }
+  const parcelas = 1;
 
   const itemsSnapshot = itensResolvidos.map(({ item, variante }) => ({
     productId: variante!.product_id,
@@ -228,21 +214,48 @@ export async function POST(request: NextRequest) {
       auto_return: "approved",
       notification_url: `${siteUrl}/api/mercadopago/webhook`,
       statement_descriptor: "BRASILMULTITECH",
-      // Pré-seleciona na tela do Mercado Pago a qtd de parcelas que o
-      // cliente já escolheu no nosso checkout — ele só confirma lá, sem
-      // digitar de novo. O valor final de cada parcela quem calcula é o
-      // Mercado Pago (pode variar por bandeira/emissor); isso aqui só
-      // define qual opção já vem marcada.
-      ...(body.paymentMethod === "cartao"
-        ? {
-            payment_methods: {
-              installments: MAX_PARCELAS_COM_JUROS,
-              default_installments: parcelas,
-            },
-          }
-        : {}),
+      payment_methods: {
+        installments: 12,
+        excluded_payment_types: [],
+        excluded_payment_methods: [],
+      },
     },
   });
+
+  if (!preferencia.id) {
+    console.error("[mercadopago:checkout-pro] criação de preferência sem ID", {
+      orderId: pedido.id,
+    });
+    return NextResponse.json({ error: "Não foi possível criar a preferência de pagamento." }, { status: 502 });
+  }
+
+  console.info("[mercadopago:checkout-pro] preferência criada", {
+    id: preferencia.id,
+    paymentMethods: preferencia.payment_methods ?? null,
+    purpose: preferencia.purpose ?? null,
+    total: totalCents / 100,
+    currencyId: "BRL",
+  });
+
+  try {
+    const preferenciaSalva = await mpPreference.get({ preferenceId: preferencia.id });
+    console.info("[mercadopago:checkout-pro] preferência conferida via GET", {
+      id: preferenciaSalva.id,
+      paymentMethods: preferenciaSalva.payment_methods ?? null,
+      purpose: preferenciaSalva.purpose ?? null,
+      total: preferenciaSalva.items?.reduce((total, item) => total + (item.unit_price ?? 0) * (item.quantity ?? 0), 0),
+      items: preferenciaSalva.items?.map((item) => ({
+        unit_price: item.unit_price,
+        currency_id: item.currency_id,
+        quantity: item.quantity,
+      })),
+    });
+  } catch (erroAuditoria) {
+    console.warn("[mercadopago:checkout-pro] não foi possível consultar a preferência via GET", {
+      id: preferencia.id,
+      errorName: erroAuditoria instanceof Error ? erroAuditoria.name : "unknown",
+    });
+  }
 
   // Update via client admin: não há policy de UPDATE para "dono do pedido" em
   // orders (só para admin), de propósito — mp_preference_id é campo de

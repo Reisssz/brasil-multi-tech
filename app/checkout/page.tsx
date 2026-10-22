@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
-import { formatBRL, calcularParcelamento } from "@/lib/pricing";
+import { formatBRL } from "@/lib/pricing";
 import { PaymentMethod } from "@/lib/orders";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
 
@@ -49,7 +49,6 @@ export default function CheckoutPage() {
   const [cepEncontrado, setCepEncontrado] = useState<string | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
-  const [installments, setInstallments] = useState(1);
 
   const dadosValid = customerName.trim().length > 2 && email.includes("@") && cpf.trim().length >= 11;
   const enderecoValid =
@@ -60,16 +59,7 @@ export default function CheckoutPage() {
     stateUf.trim().length === 2;
 
   const freteCents = freteSelecionado?.precoComDescontoCents ?? 0;
-  // Opções calculadas com a tabela real de taxas da loja (lib/pricing.ts,
-  // copiada da conta Mercado Pago) — o valor exato de cada parcela ainda é
-  // confirmado na tela do Mercado Pago (pode variar um pouco por bandeira/
-  // emissor), mas a prévia aqui já reflete a taxa real, não um número
-  // inventado.
-  const opcoesParcelamento = calcularParcelamento(totalCents);
-  const parcelaEscolhida = opcoesParcelamento.find((o) => o.count === installments) ?? opcoesParcelamento[0];
-  const cardTotal = (parcelaEscolhida?.totalCents ?? totalCents) + freteCents;
-
-  const totalFinal = paymentMethod === "cartao" ? cardTotal : totalCents + freteCents;
+  const totalFinal = totalCents + freteCents;
 
   if (items.length === 0 && !submitting) {
     return (
@@ -165,7 +155,6 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items,
           paymentMethod,
-          installments: paymentMethod === "cartao" ? installments : undefined,
           customerName,
           cpf,
           phone,
@@ -418,29 +407,11 @@ export default function CheckoutPage() {
                           ))}
                         </div>
 
-                        {paymentMethod === "cartao" && (
-                          <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
-                            Parcelas
-                            <select
-                              value={installments}
-                              onChange={(e) => setInstallments(Number(e.target.value))}
-                              className="h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand bg-white"
-                            >
-                              {opcoesParcelamento.map((o) => (
-                                <option key={o.count} value={o.count}>
-                                  {o.count}x de {formatBRL(o.installmentCents)}
-                                  {o.interestFree ? " sem juros" : " com juros"}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        )}
-
                         <div className="rounded-lg bg-[#f7f8fa] px-4 py-3 text-xs text-muted">
                           Você será redirecionado ao <strong>Mercado Pago</strong> para concluir o pagamento com
                           segurança.
                           {paymentMethod === "cartao" &&
-                            " Essa parcela já vem selecionada por lá — o valor final é confirmado na hora, e pode variar um pouco conforme a bandeira do seu cartão."}
+                            " O Checkout Pro exibirá as opções disponíveis até 12x e aplicará as condições de juros configuradas na conta Mercado Pago."}
                         </div>
 
                         {erroSubmit && (
@@ -490,6 +461,11 @@ export default function CheckoutPage() {
             <span>Total</span>
             <span className="tabular-nums">{formatBRL(totalFinal)}</span>
           </div>
+          {paymentMethod === "cartao" && (
+            <p className="text-xs leading-relaxed text-muted">
+              Esse é o valor-base da compra. Parcelas e eventuais juros serão exibidos pelo Mercado Pago conforme as condições da conta.
+            </p>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { formatBRL, calcularParcelamento, melhorParcelaSemJuros, melhorParcelaComJuros, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, getPixPriceCents } from "@/lib/pricing";
 
 export function PriceBlock({
   priceCents,
@@ -18,10 +18,6 @@ export function PriceBlock({
   const pixPriceCents = pixDescontoPercent ? getPixPriceCents(priceCents, pixDescontoPercent) : null;
   const temDesconto = !!compareAtCents && compareAtCents > priceCents;
   const percentDesconto = temDesconto ? Math.round((1 - priceCents / compareAtCents!) * 100) : null;
-  const opcoesParcelamento = parcelamentoHabilitado ? calcularParcelamento(priceCents) : [];
-  const parcelaSemJuros = melhorParcelaSemJuros(opcoesParcelamento);
-  const parcelaComJuros = melhorParcelaComJuros(opcoesParcelamento);
-
   return (
     <div className="flex flex-col gap-0.5">
       {temDesconto && (
@@ -47,15 +43,8 @@ export function PriceBlock({
           {formatBRL(priceCents)} no cartão
         </span>
       )}
-      {/* Fora daqui (checkout, valor cobrado de verdade) quem processa é o
-          Mercado Pago — essa prévia só aparece quando o admin habilitou o
-          parcelamento pra este produto, com a tabela real de taxas em
-          lib/pricing.ts. */}
-      {parcelaSemJuros ? (
-        <span className="text-xs text-muted tabular-nums">
-          Em {parcelaSemJuros.count}x de {formatBRL(parcelaSemJuros.installmentCents)} s/ juros
-          {parcelaComJuros && <> ou {parcelaComJuros.count}x de {formatBRL(parcelaComJuros.installmentCents)} c/ juros</>}
-        </span>
+      {parcelamentoHabilitado ? (
+        <span className="text-xs text-muted">Até 12x no cartão; condições e juros no Mercado Pago.</span>
       ) : (
         <span className="text-xs text-muted">ou parcele no cartão de crédito</span>
       )}
