@@ -1,4 +1,4 @@
-import { calcularParcelamento, formatBRL, MAX_PARCELAS_SEM_JUROS } from "@/lib/pricing";
+import { calcularParcelamento, formatBRL, MAX_PARCELAS_SEM_JUROS, MAX_PARCELAS_COM_JUROS } from "@/lib/pricing";
 
 export const metadata = { title: "Parcelamento" };
 
@@ -11,12 +11,14 @@ export default function AdminConfiguracoes() {
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
       <h1 className="font-display text-2xl font-bold text-foreground mb-2">Parcelamento</h1>
       <p className="text-sm text-muted mb-6">
-        Tabela fixa de taxas do Checkout Pro (Mercado Pago), copiada de <strong>Seu negócio → Taxas e
-        parcelamento</strong>. Não é mais configurável por aqui — para mudar algum valor, edite as constantes{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">TAXA_LOJA_SEM_JUROS_PERCENT</code> e{" "}
+        Hoje: até <strong>{MAX_PARCELAS_SEM_JUROS}x sem juros</strong> (loja absorve o custo) e até{" "}
+        <strong>{MAX_PARCELAS_COM_JUROS}x com juros</strong> do comprador. Não é mais configurável por
+        aqui — para mudar algum valor, edite as constantes{" "}
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">MAX_PARCELAS_SEM_JUROS</code>,{" "}
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">MAX_PARCELAS_COM_JUROS</code> e{" "}
         <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">JUROS_COMPRADOR_PERCENT</code> em{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">lib/pricing.ts</code> sempre que a taxa
-        do Mercado Pago mudar.
+        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">lib/pricing.ts</code> sempre que a
+        condição do Mercado Pago mudar.
       </p>
 
       <div className="rounded-2xl border border-border bg-surface overflow-hidden">

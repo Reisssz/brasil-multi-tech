@@ -64,7 +64,7 @@ export function ProductCard({ product }: { product: Product }) {
                   <rect x="2.5" y="5" width="15" height="10" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
                   <path d="M2.5 8.2h15" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
-                <span>Até 12x no cartão; condições e juros no Mercado Pago.</span>
+                <span>Até 10x sem juros no cartão (até 18x com juros).</span>
               </>
             )}
           </span>

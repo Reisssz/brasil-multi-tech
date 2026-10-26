@@ -44,7 +44,7 @@ export function PriceBlock({
         </span>
       )}
       {parcelamentoHabilitado ? (
-        <span className="text-xs text-muted">Até 12x no cartão; condições e juros no Mercado Pago.</span>
+        <span className="text-xs text-muted">Até 10x sem juros no cartão (até 18x com juros).</span>
       ) : (
         <span className="text-xs text-muted">ou parcele no cartão de crédito</span>
       )}
