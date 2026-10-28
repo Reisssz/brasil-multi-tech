@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
       notification_url: `${siteUrl}/api/mercadopago/webhook`,
       statement_descriptor: "BRASILMULTITECH",
       payment_methods: {
-        installments: 18,
+        installments: 12,
         excluded_payment_types: [],
         excluded_payment_methods: [],
       },

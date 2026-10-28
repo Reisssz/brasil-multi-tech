@@ -12,7 +12,7 @@ const MENSAGENS: string[] = [
   "Comemore com a gente: ofertas especiais em todo o site",
   "8% de desconto à vista no Pix em todos os produtos",
   "Frete grátis nas compras acima de R$ 1.300",
-  "Parcele em até 18x no cartão de crédito",
+  "Parcele em até 10x sem juros no cartão de crédito",
 ];
 
 export function PromoTopBar() {

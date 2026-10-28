@@ -30,17 +30,11 @@ export type OpcaoParcelamento = {
  * Mercado Pago.
  */
 export const MAX_PARCELAS_SEM_JUROS = 10;
-export const MAX_PARCELAS_COM_JUROS = 18;
+export const MAX_PARCELAS_COM_JUROS = 12;
 
 const JUROS_COMPRADOR_PERCENT: Record<number, number> = {
   11: 20.66,
   12: 22.11,
-  13: 23.04,
-  14: 24.45,
-  15: 25.83,
-  16: 27.2,
-  17: 28.58,
-  18: 29.99,
 };
 
 /** Todas as opções de parcelamento (sem juros + com juros) pro valor informado, na ordem de 1x até o máximo. */
@@ -67,7 +61,7 @@ export function melhorParcelaSemJuros(opcoes: OpcaoParcelamento[]): OpcaoParcela
   return [...opcoes].reverse().find((o) => o.interestFree);
 }
 
-/** Maior parcelamento com juros do comprador (hoje, 18x). */
+/** Maior parcelamento com juros do comprador (hoje, 12x). */
 export function melhorParcelaComJuros(opcoes: OpcaoParcelamento[]): OpcaoParcelamento | undefined {
   return [...opcoes].reverse().find((o) => !o.interestFree);
 }
