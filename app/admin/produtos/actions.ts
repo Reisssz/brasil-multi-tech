@@ -44,6 +44,7 @@ function extrairVariantes(formData: FormData) {
   const precos = formData.getAll("variantePreco") as string[];
   const estoques = formData.getAll("varianteEstoque") as string[];
   const skus = formData.getAll("varianteSku") as string[];
+  const descricoes = formData.getAll("varianteDescricao") as string[];
 
   return cores
     .map((cor, i) => ({
@@ -55,6 +56,7 @@ function extrairVariantes(formData: FormData) {
       price_cents: Math.round(Number(precos[i] ?? 0) * 100),
       stock: Number(estoques[i] ?? 0),
       sku: skus[i] || null,
+      description: descricoes[i]?.trim() || null,
       photos: formData.getAll(`varianteFotosExistentes_${i}`) as string[],
     }))
     .filter((v) => v.price_cents > 0);

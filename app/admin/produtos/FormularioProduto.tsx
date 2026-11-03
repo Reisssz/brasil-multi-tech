@@ -14,6 +14,7 @@ type Variante = {
   price: string;
   stock: string;
   sku: string;
+  description: string;
   photos: string[];
 };
 
@@ -51,6 +52,7 @@ function varianteVazia(): Variante {
     price: "",
     stock: "0",
     sku: "",
+    description: "",
     photos: [],
   };
 }
@@ -214,7 +216,8 @@ export default function FormularioProduto({
 
       <Secao titulo="Variações">
         <p className="text-xs text-muted -mt-2">
-          Cada variação (cor) tem suas próprias fotos — útil quando o Preto e o Branco, por exemplo, precisam de fotos diferentes.
+          Cada variação (cor) tem suas próprias fotos e, opcionalmente, sua própria descrição — útil quando o
+          Preto e o Branco, por exemplo, precisam de fotos ou texto diferentes.
         </p>
 
         <div className="flex flex-col gap-4">
@@ -314,6 +317,18 @@ export default function FormularioProduto({
                   />
                 </CampoVariante>
               </div>
+
+              <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
+                Descrição desta variação (opcional)
+                <textarea
+                  name="varianteDescricao"
+                  value={v.description}
+                  onChange={(e) => atualizarVariante(indice, "description", e.target.value)}
+                  rows={2}
+                  placeholder="Deixe em branco para usar a descrição geral do produto"
+                  className="rounded-lg border border-border px-2.5 py-2 text-sm outline-none focus:border-brand resize-y"
+                />
+              </label>
 
               <div className="border-t border-border pt-3 flex flex-col gap-2.5">
                 <p className="text-xs font-medium text-foreground">

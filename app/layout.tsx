@@ -7,8 +7,10 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { NewsletterPopup } from "@/components/layout/NewsletterPopup";
 import { CartProvider } from "@/lib/cart-context";
+import { ParcelamentoConfigProvider } from "@/components/providers/ParcelamentoConfigProvider";
 import { SITE } from "@/lib/config";
 import { getCategoriesForShowcaseDb } from "@/lib/data/products-db";
+import { getConfiguracaoParcelamento } from "@/lib/data/pricing-settings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,30 +28,34 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(`https://${SITE.domain}`),
-  title: {
-    default: `${SITE.name} — Celulares, notebooks e acessórios com garantia`,
-    template: `%s — ${SITE.name}`,
-  },
-  description:
-    "Compre celulares novos e seminovos, notebooks e acessórios com garantia de até 6 meses, desconto no Pix e parcelamento em até 12x. Entrega para todo o Brasil.",
-  keywords: [
-    "celulares seminovos",
-    "iphone seminovo",
-    "smartphones",
-    "acessórios para celular",
-    "brasil multi tech",
-  ],
-  openGraph: {
-    title: `${SITE.name} — Tecnologia acessível, com garantia de verdade`,
+export async function generateMetadata(): Promise<Metadata> {
+  const configParcelamento = await getConfiguracaoParcelamento();
+  const maxParcelas = configParcelamento.maxParcelasComJuros;
+  return {
+    metadataBase: new URL(`https://${SITE.domain}`),
+    title: {
+      default: `${SITE.name} — Celulares, notebooks e acessórios com garantia`,
+      template: `%s — ${SITE.name}`,
+    },
     description:
-      "Celulares, notebooks e acessórios com garantia, desconto no Pix e parcelamento em até 12x.",
-    siteName: SITE.name,
-    locale: "pt_BR",
-    type: "website",
-  },
-};
+      `Compre celulares novos e seminovos, notebooks e acessórios com garantia de até 6 meses, desconto no Pix e parcelamento em até ${maxParcelas}x. Entrega para todo o Brasil.`,
+    keywords: [
+      "celulares seminovos",
+      "iphone seminovo",
+      "smartphones",
+      "acessórios para celular",
+      "brasil multi tech",
+    ],
+    openGraph: {
+      title: `${SITE.name} — Tecnologia acessível, com garantia de verdade`,
+      description:
+        `Celulares, notebooks e acessórios com garantia, desconto no Pix e parcelamento em até ${maxParcelas}x.`,
+      siteName: SITE.name,
+      locale: "pt_BR",
+      type: "website",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -57,6 +63,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const categories = await getCategoriesForShowcaseDb();
+  const configParcelamento = await getConfiguracaoParcelamento();
 
   return (
     <html
@@ -64,19 +71,21 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <CartProvider>
-          <PromoTopBar />
-          <TopBar />
-          <Header categories={categories} />
-          {/* Bloco, não flex: num container flex as margens automáticas do
-              `mx-auto max-w-7xl` das seções/páginas cancelam o stretch, e cada
-              uma encolhia até a largura do próprio conteúdo (o QuickTiles, por
-              exemplo, renderizava com 741px em vez de 1232px), quebrando o
-              alinhamento lateral da página inteira. */}
-          <main className="flex-1">{children}</main>
-          <Footer categories={categories} />
-          <NewsletterPopup />
-        </CartProvider>
+        <ParcelamentoConfigProvider value={configParcelamento}>
+          <CartProvider>
+            <PromoTopBar maxParcelasSemJuros={configParcelamento.maxParcelasSemJuros} />
+            <TopBar />
+            <Header categories={categories} />
+            {/* Bloco, não flex: num container flex as margens automáticas do
+                `mx-auto max-w-7xl` das seções/páginas cancelam o stretch, e cada
+                uma encolhia até a largura do próprio conteúdo (o QuickTiles, por
+                exemplo, renderizava com 741px em vez de 1232px), quebrando o
+                alinhamento lateral da página inteira. */}
+            <main className="flex-1">{children}</main>
+            <Footer categories={categories} />
+            <NewsletterPopup />
+          </CartProvider>
+        </ParcelamentoConfigProvider>
       </body>
     </html>
   );

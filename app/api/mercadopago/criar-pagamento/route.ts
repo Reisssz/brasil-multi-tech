@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
 import { formatBRL } from "@/lib/pricing";
+import { getConfiguracaoParcelamento } from "@/lib/data/pricing-settings";
 
 interface CriarPagamentoBody {
   items: CartItem[];
@@ -180,6 +181,8 @@ export async function POST(request: NextRequest) {
       ? "test"
       : "unknown";
 
+  const { maxParcelasComJuros } = await getConfiguracaoParcelamento();
+
   const preferencia = await mpPreference.create({
     body: {
       items: [
@@ -221,7 +224,7 @@ export async function POST(request: NextRequest) {
       notification_url: `${siteUrl}/api/mercadopago/webhook`,
       statement_descriptor: "BRASILMULTITECH",
       payment_methods: {
-        installments: 12,
+        installments: maxParcelasComJuros,
         excluded_payment_types: [],
         excluded_payment_methods: [],
       },

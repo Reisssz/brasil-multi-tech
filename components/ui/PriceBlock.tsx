@@ -1,4 +1,7 @@
+"use client";
+
 import { formatBRL, getPixPriceCents } from "@/lib/pricing";
+import { useParcelamentoConfig } from "@/components/providers/ParcelamentoConfigProvider";
 
 export function PriceBlock({
   priceCents,
@@ -14,6 +17,7 @@ export function PriceBlock({
   parcelamentoHabilitado?: boolean;
   pixDescontoPercent?: number;
 }) {
+  const { maxParcelasSemJuros, maxParcelasComJuros } = useParcelamentoConfig();
   const priceTextSize = size === "lg" ? "text-3xl" : size === "sm" ? "text-lg" : "text-2xl";
   const pixPriceCents = pixDescontoPercent ? getPixPriceCents(priceCents, pixDescontoPercent) : null;
   const temDesconto = !!compareAtCents && compareAtCents > priceCents;
@@ -44,7 +48,7 @@ export function PriceBlock({
         </span>
       )}
       {parcelamentoHabilitado ? (
-        <span className="text-xs text-muted">Até 10x sem juros no cartão (até 12x com juros).</span>
+        <span className="text-xs text-muted">Até {maxParcelasSemJuros}x sem juros no cartão (até {maxParcelasComJuros}x com juros).</span>
       ) : (
         <span className="text-xs text-muted">ou parcele no cartão de crédito</span>
       )}

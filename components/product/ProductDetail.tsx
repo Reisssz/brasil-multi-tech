@@ -328,7 +328,7 @@ export function ProductDetail({
       <div className="grid lg:grid-cols-2 gap-10 mt-12">
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-bold text-foreground">Descrição</h2>
-          <p className="text-sm text-muted leading-relaxed">{product.description}</p>
+          <p className="text-sm text-muted leading-relaxed">{activeVariant.description || product.description}</p>
         </div>
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-foreground">Avaliações ({product.reviewCount})</h2>

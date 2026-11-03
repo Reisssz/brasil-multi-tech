@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
 import { formatBRL, getPixPriceCents } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
+import { useParcelamentoConfig } from "@/components/providers/ParcelamentoConfigProvider";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { Badge } from "../ui/Badge";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { maxParcelasSemJuros, maxParcelasComJuros } = useParcelamentoConfig();
   // Feature the variant that matches the advertised "a partir de" price, so the
   // condition badge and the price shown never contradict each other.
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);
@@ -64,7 +68,7 @@ export function ProductCard({ product }: { product: Product }) {
                   <rect x="2.5" y="5" width="15" height="10" rx="1.6" stroke="currentColor" strokeWidth="1.4" />
                   <path d="M2.5 8.2h15" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
-                <span>Até 10x sem juros no cartão (até 12x com juros).</span>
+                <span>Até {maxParcelasSemJuros}x sem juros no cartão (até {maxParcelasComJuros}x com juros).</span>
               </>
             )}
           </span>

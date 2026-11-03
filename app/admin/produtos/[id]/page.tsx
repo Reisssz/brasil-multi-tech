@@ -13,7 +13,7 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
       .select(
         `id, name, brand, category_id, tagline, description, highlights, warranty_months, free_shipping, ativo,
          em_destaque, parcelamento_habilitado, pix_desconto_percent,
-         product_variants ( color, color_hex, storage_gb, condition, price_cents, compare_at_cents, stock, sku, photos )`
+         product_variants ( color, color_hex, storage_gb, condition, price_cents, compare_at_cents, stock, sku, photos, description )`
       )
       .eq("id", id)
       .single(),
@@ -52,6 +52,7 @@ export default async function EditarProduto({ params }: { params: Promise<{ id: 
             price: (v.price_cents / 100).toString(),
             stock: v.stock.toString(),
             sku: v.sku ?? "",
+            description: v.description ?? "",
             photos: v.photos ?? [],
           })),
         }}

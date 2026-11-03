@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart, resolveCartLine } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
+import { useParcelamentoConfig } from "@/components/providers/ParcelamentoConfigProvider";
 import { PaymentMethod } from "@/lib/orders";
 import { CheckoutComboSuggestions } from "@/components/checkout/CheckoutComboSuggestions";
 
@@ -21,6 +22,7 @@ type OpcaoFrete = {
 
 export default function CheckoutPage() {
   const { items, totalCents, clear } = useCart();
+  const { maxParcelasSemJuros, maxParcelasComJuros } = useParcelamentoConfig();
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
@@ -411,7 +413,7 @@ export default function CheckoutPage() {
                           Você será redirecionado ao <strong>Mercado Pago</strong> para concluir o pagamento com
                           segurança.
                           {paymentMethod === "cartao" &&
-                            " O Checkout Pro exibirá as opções disponíveis — até 10x sem juros e até 12x com juros — conforme as condições configuradas na conta Mercado Pago."}
+                            ` O Checkout Pro exibirá as opções disponíveis — até ${maxParcelasSemJuros}x sem juros e até ${maxParcelasComJuros}x com juros — conforme as condições configuradas na conta Mercado Pago.`}
                         </div>
 
                         {erroSubmit && (

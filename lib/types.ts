@@ -29,6 +29,8 @@ export interface ProductVariant {
   images: string[];
   /** Real product photos, filenames relative to /products/. Falls back to the `images` icon set when absent. */
   photos?: string[];
+  /** Descrição específica dessa variação — quando ausente, a página do produto usa a descrição geral (Product.description). */
+  description?: string;
   /** Dimensões da embalagem para cálculo de frete. Se ausentes, usa um fallback conservador. */
   weightGrams?: number;
   widthCm?: number;

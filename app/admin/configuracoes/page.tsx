@@ -1,27 +1,29 @@
-import { calcularParcelamento, formatBRL, MAX_PARCELAS_SEM_JUROS, MAX_PARCELAS_COM_JUROS } from "@/lib/pricing";
+import { calcularParcelamento, formatBRL } from "@/lib/pricing";
+import { getConfiguracaoParcelamento } from "@/lib/data/pricing-settings";
+import { FormularioParcelamento } from "./FormularioParcelamento";
 
 export const metadata = { title: "Parcelamento" };
 
 const VALOR_EXEMPLO_CENTS = 99900;
 
-export default function AdminConfiguracoes() {
-  const opcoes = calcularParcelamento(VALOR_EXEMPLO_CENTS);
+export default async function AdminConfiguracoes() {
+  const config = await getConfiguracaoParcelamento();
+  const opcoes = calcularParcelamento(VALOR_EXEMPLO_CENTS, config);
 
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10">
       <h1 className="font-display text-2xl font-bold text-foreground mb-2">Parcelamento</h1>
       <p className="text-sm text-muted mb-6">
-        Hoje: até <strong>{MAX_PARCELAS_SEM_JUROS}x sem juros</strong> (loja absorve o custo) e até{" "}
-        <strong>{MAX_PARCELAS_COM_JUROS}x com juros</strong> do comprador. Não é mais configurável por
-        aqui — para mudar algum valor, edite as constantes{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">MAX_PARCELAS_SEM_JUROS</code>,{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">MAX_PARCELAS_COM_JUROS</code> e{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">JUROS_COMPRADOR_PERCENT</code> em{" "}
-        <code className="text-xs bg-[#f0f1f4] rounded px-1 py-0.5">lib/pricing.ts</code> sempre que a
-        condição do Mercado Pago mudar.
+        Hoje: até <strong>{config.maxParcelasSemJuros}x sem juros</strong> (loja absorve o custo) e até{" "}
+        <strong>{config.maxParcelasComJuros}x com juros</strong> do comprador. Ajuste abaixo sempre que a
+        condição do Mercado Pago mudar — a loja inteira (cards, página do produto, checkout e a preferência
+        enviada ao Mercado Pago) usa esses valores.
       </p>
 
-      <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+      <FormularioParcelamento config={config} />
+
+      <div className="rounded-2xl border border-border bg-surface overflow-hidden mt-6">
+
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-[#f7f8fa] text-left text-xs text-muted uppercase">
@@ -54,9 +56,9 @@ export default function AdminConfiguracoes() {
       </div>
 
       <p className="text-xs text-muted mt-4">
-        Até {MAX_PARCELAS_SEM_JUROS}x a loja absorve o custo crescente e o cliente sempre paga o valor cheio.
-        De {MAX_PARCELAS_SEM_JUROS + 1}x em diante a loja recebe como se fosse à vista, e o Mercado Pago cobra
-        os juros direto do comprador na tela de pagamento.
+        Até {config.maxParcelasSemJuros}x a loja absorve o custo crescente e o cliente sempre paga o valor
+        cheio. De {config.maxParcelasSemJuros + 1}x em diante a loja recebe como se fosse à vista, e o
+        Mercado Pago cobra os juros direto do comprador na tela de pagamento.
       </p>
     </div>
   );

@@ -8,20 +8,20 @@ import { useEffect, useState } from "react";
  * políticas reais do site (nada de campanha/desconto inventado) — ajuste
  * aqui se alguma dessas condições mudar.
  */
-const MENSAGENS: string[] = [
+const MENSAGENS_FIXAS: string[] = [
   "Comemore com a gente: ofertas especiais em todo o site",
   "8% de desconto à vista no Pix em todos os produtos",
   "Frete grátis nas compras acima de R$ 1.300",
-  "Parcele em até 10x sem juros no cartão de crédito",
 ];
 
-export function PromoTopBar() {
+export function PromoTopBar({ maxParcelasSemJuros }: { maxParcelasSemJuros: number }) {
+  const mensagens = [...MENSAGENS_FIXAS, `Parcele em até ${maxParcelasSemJuros}x sem juros no cartão de crédito`];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % MENSAGENS.length), 4000);
+    const id = setInterval(() => setIndex((i) => (i + 1) % mensagens.length), 4000);
     return () => clearInterval(id);
-  }, []);
+  }, [mensagens.length]);
 
   return (
     <div className="hidden sm:block bg-gradient-to-r from-brand-dark via-brand to-brand-dark text-white">
@@ -42,7 +42,7 @@ export function PromoTopBar() {
         </span>
         <span className="flex-1 flex items-center justify-center px-4 min-w-0 overflow-hidden relative">
           <span key={index} className="animate-fade-in-fast whitespace-nowrap truncate">
-            {MENSAGENS[index]}
+            {mensagens[index]}
           </span>
         </span>
         <span className="flex items-center gap-1 pl-4 shrink-0 whitespace-nowrap border-l border-white/25 text-white/90 group-hover:text-white transition-colors">

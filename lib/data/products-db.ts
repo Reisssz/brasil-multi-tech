@@ -42,6 +42,7 @@ type LinhaVariante = {
   stock: number;
   photos: string[];
   sku: string | null;
+  description: string | null;
   weight_grams: number;
   width_cm: number;
   height_cm: number;
@@ -72,7 +73,7 @@ const SELECT_PRODUTO_COMPLETO = `
   free_shipping, ativo, category_id, em_destaque, parcelamento_habilitado, pix_desconto_percent,
   categories ( slug, nome ),
   product_variants ( id, color, color_hex, storage_gb, condition, price_cents,
-    compare_at_cents, stock, photos, sku, weight_grams, width_cm, height_cm, length_cm )
+    compare_at_cents, stock, photos, sku, description, weight_grams, width_cm, height_cm, length_cm )
 `;
 
 function mapearVariante(v: LinhaVariante): ProductVariant {
@@ -87,6 +88,7 @@ function mapearVariante(v: LinhaVariante): ProductVariant {
     stock: v.stock,
     images: [],
     photos: v.photos ?? [],
+    description: v.description ?? undefined,
     weightGrams: v.weight_grams,
     widthCm: v.width_cm,
     heightCm: v.height_cm,
