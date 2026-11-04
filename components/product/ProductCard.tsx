@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { Product } from "@/lib/types";
 import { getMainPhoto, getMinPriceCents } from "@/lib/data/products";
-import { formatBRL, getPixPriceCents } from "@/lib/pricing";
+import { formatBRL, getPixPriceCents, resolverConfigParcelamento } from "@/lib/pricing";
 import { CONDITION_LABELS, isSeminovo } from "@/lib/conditions";
 import { useParcelamentoConfig } from "@/components/providers/ParcelamentoConfigProvider";
 import { ProductImage, ProductIconKey } from "../ui/ProductImage";
 import { Badge } from "../ui/Badge";
 
 export function ProductCard({ product }: { product: Product }) {
-  const { maxParcelasSemJuros, maxParcelasComJuros } = useParcelamentoConfig();
+  const { maxParcelasSemJuros, maxParcelasComJuros } = resolverConfigParcelamento(useParcelamentoConfig(), product);
   // Feature the variant that matches the advertised "a partir de" price, so the
   // condition badge and the price shown never contradict each other.
   const mainVariant = product.variants.reduce((min, v) => (v.priceCents < min.priceCents ? v : min), product.variants[0]);

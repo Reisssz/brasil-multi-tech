@@ -66,11 +66,18 @@ type LinhaProduto = {
   em_destaque: boolean;
   parcelamento_habilitado: boolean;
   pix_desconto_percent: number | null;
+  vendidos_texto: string | null;
+  selo_texto: string | null;
+  cupom_percent: number | null;
+  parcelas_sem_juros: number | null;
+  parcelas_com_juros: number | null;
+  juros_mensal_percent: number | null;
 };
 
 const SELECT_PRODUTO_COMPLETO = `
   id, slug, brand, name, tagline, description, highlights, warranty_months,
   free_shipping, ativo, category_id, em_destaque, parcelamento_habilitado, pix_desconto_percent,
+  vendidos_texto, selo_texto, cupom_percent, parcelas_sem_juros, parcelas_com_juros, juros_mensal_percent,
   categories ( slug, nome ),
   product_variants ( id, color, color_hex, storage_gb, condition, price_cents,
     compare_at_cents, stock, photos, sku, description, weight_grams, width_cm, height_cm, length_cm )
@@ -125,6 +132,12 @@ function mapearProduto(row: LinhaProduto): Product {
     emDestaque: row.em_destaque,
     parcelamentoHabilitado: row.parcelamento_habilitado,
     pixDescontoPercent: row.pix_desconto_percent ?? undefined,
+    vendidosTexto: row.vendidos_texto ?? undefined,
+    seloTexto: row.selo_texto ?? undefined,
+    cupomPercent: row.cupom_percent ?? undefined,
+    parcelasSemJuros: row.parcelas_sem_juros ?? undefined,
+    parcelasComJuros: row.parcelas_com_juros ?? undefined,
+    jurosMensalPercent: row.juros_mensal_percent ?? undefined,
   };
 }
 

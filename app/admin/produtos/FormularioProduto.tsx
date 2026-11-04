@@ -2,6 +2,8 @@
 
 import { useActionState, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PrecoDetalhe } from "@/components/product/PrecoDetalhe";
+import { useParcelamentoConfig } from "@/components/providers/ParcelamentoConfigProvider";
 import type { EstadoProduto } from "./actions";
 
 type Categoria = { id: string; nome: string };
@@ -12,6 +14,7 @@ type Variante = {
   storageGb: string;
   condition: string;
   price: string;
+  compareAt: string;
   stock: string;
   sku: string;
   description: string;
@@ -32,6 +35,12 @@ type ProdutoExistente = {
   emDestaque: boolean;
   parcelamentoHabilitado: boolean;
   pixDescontoPercent: number | null;
+  vendidosTexto: string;
+  seloTexto: string;
+  cupomPercent: number | null;
+  parcelasSemJuros: number | null;
+  parcelasComJuros: number | null;
+  jurosMensalPercent: number | null;
   variantes: Variante[];
 };
 
@@ -50,6 +59,7 @@ function varianteVazia(): Variante {
     storageGb: "",
     condition: "novo",
     price: "",
+    compareAt: "",
     stock: "0",
     sku: "",
     description: "",
@@ -72,6 +82,20 @@ export default function FormularioProduto({
 }) {
   const [estado, formAction, pending] = useActionState(action, null);
   const [variantes, setVariantes] = useState<Variante[]>(produto?.variantes ?? [varianteVazia()]);
+  const configGlobal = useParcelamentoConfig();
+
+  // Estado controlado só dos campos que alimentam o preview da caixa de compra.
+  const [nome, setNome] = useState(produto?.name ?? "");
+  const [marca, setMarca] = useState(produto?.brand ?? "");
+  const [parcelamentoHabilitado, setParcelamentoHabilitado] = useState(produto?.parcelamentoHabilitado ?? false);
+  const [pixPercent, setPixPercent] = useState(produto?.pixDescontoPercent?.toString() ?? "");
+  const [vendidosTexto, setVendidosTexto] = useState(produto?.vendidosTexto ?? "");
+  const [seloTexto, setSeloTexto] = useState(produto?.seloTexto ?? "");
+  const [cupomPercent, setCupomPercent] = useState(produto?.cupomPercent?.toString() ?? "");
+  const [parcelasSemJuros, setParcelasSemJuros] = useState(produto?.parcelasSemJuros?.toString() ?? "");
+  const [parcelasComJuros, setParcelasComJuros] = useState(produto?.parcelasComJuros?.toString() ?? "");
+  const [jurosMensal, setJurosMensal] = useState(produto?.jurosMensalPercent?.toString() ?? "");
+  const [varianteDoPreview, setVarianteDoPreview] = useState(0);
 
   // Pasta própria pro upload direto do navegador — as fotos vão pro Storage
   // ANTES do submit do formulário, então não dependem do slug do produto
@@ -152,12 +176,17 @@ export default function FormularioProduto({
 
   const enviandoFotos = Object.values(enviandoPorVariante).some((n) => n > 0);
 
+  const varianteAtiva = variantes[Math.min(varianteDoPreview, variantes.length - 1)];
+  const precoPreviewCents = Math.round(Number(varianteAtiva?.price) * 100) || 0;
+  const compararPreviewCents = Math.round(Number(varianteAtiva?.compareAt) * 100) || undefined;
+  const numeroOuUndefined = (valor: string) => (Number(valor) > 0 ? Number(valor) : undefined);
+
   return (
     <form action={formAction} className="flex flex-col gap-6 pb-24">
       <Secao titulo="Informações básicas">
         <div className="grid sm:grid-cols-2 gap-4">
-          <Campo label="Nome do produto" name="name" defaultValue={produto?.name} placeholder="Ex: iPhone 13" required />
-          <Campo label="Marca" name="brand" defaultValue={produto?.brand} placeholder="Ex: Apple" required />
+          <Campo label="Nome do produto" name="name" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: iPhone 13" required />
+          <Campo label="Marca" name="brand" value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Ex: Apple" required />
         </div>
 
         <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
@@ -292,6 +321,18 @@ export default function FormularioProduto({
                     required
                     value={v.price}
                     onChange={(e) => atualizarVariante(indice, "price", e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border px-2.5 text-sm outline-none focus:border-brand"
+                  />
+                </CampoVariante>
+
+                <CampoVariante label="Preço antigo riscado (R$, opcional)">
+                  <input
+                    name="varianteComparar"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 2909,00"
+                    value={v.compareAt}
+                    onChange={(e) => atualizarVariante(indice, "compareAt", e.target.value)}
                     className="h-10 w-full rounded-lg border border-border px-2.5 text-sm outline-none focus:border-brand"
                   />
                 </CampoVariante>
@@ -433,7 +474,8 @@ export default function FormularioProduto({
           <ToggleField
             label="Habilitar parcelamento no cartão"
             name="parcelamentoHabilitado"
-            defaultChecked={produto?.parcelamentoHabilitado ?? false}
+            checked={parcelamentoHabilitado}
+            onChange={setParcelamentoHabilitado}
           />
           <p className="text-xs text-muted -mt-1.5">
             Mostra a prévia de parcelas no card e na página do produto, usando o plano configurado em{" "}
@@ -452,8 +494,132 @@ export default function FormularioProduto({
             min={1}
             max={100}
             placeholder="Deixe em branco se não tiver desconto"
-            defaultValue={produto?.pixDescontoPercent ?? undefined}
+            value={pixPercent}
+            onChange={(e) => setPixPercent(e.target.value)}
           />
+        </div>
+      </Secao>
+
+      <Secao titulo="Caixa de compra (textos, parcelas e preview)">
+        <p className="text-xs text-muted -mt-2">
+          Tudo aqui é opcional e aparece ao lado do preço na página do produto. Parcelas e juros em branco usam a{" "}
+          <a href="/admin/configuracoes" className="text-brand-dark hover:underline">
+            configuração global
+          </a>{" "}
+          ({configGlobal.maxParcelasSemJuros}x sem juros, até {configGlobal.maxParcelasComJuros}x com juros).
+        </p>
+
+        <div className="grid gap-6 md:grid-cols-[1fr_320px]">
+          <div className="flex flex-col gap-4">
+            <Campo
+              label="Texto de vendas"
+              name="vendidosTexto"
+              value={vendidosTexto}
+              onChange={(e) => setVendidosTexto(e.target.value)}
+              placeholder="Ex: +1000 produtos vendidos"
+              maxLength={60}
+            />
+            <Campo
+              label="Selo de destaque (vermelho)"
+              name="seloTexto"
+              value={seloTexto}
+              onChange={(e) => setSeloTexto(e.target.value)}
+              placeholder="Ex: Última unidade"
+              maxLength={40}
+            />
+            <Campo
+              label="Cupom — % OFF"
+              name="cupomPercent"
+              type="number"
+              min={1}
+              max={100}
+              step="0.01"
+              value={cupomPercent}
+              onChange={(e) => setCupomPercent(e.target.value)}
+              placeholder="Ex: 5"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Campo
+                label="Parcelas sem juros (até)"
+                name="parcelasSemJuros"
+                type="number"
+                min={1}
+                max={24}
+                value={parcelasSemJuros}
+                onChange={(e) => setParcelasSemJuros(e.target.value)}
+                placeholder={String(configGlobal.maxParcelasSemJuros)}
+              />
+              <Campo
+                label="Parcelas com juros (até)"
+                name="parcelasComJuros"
+                type="number"
+                min={1}
+                max={24}
+                value={parcelasComJuros}
+                onChange={(e) => setParcelasComJuros(e.target.value)}
+                placeholder={String(configGlobal.maxParcelasComJuros)}
+              />
+            </div>
+            <Campo
+              label="Juros ao mês nas parcelas com juros — %"
+              name="jurosMensalPercent"
+              type="number"
+              min={0.01}
+              step="0.01"
+              value={jurosMensal}
+              onChange={(e) => setJurosMensal(e.target.value)}
+              placeholder="Ex: 2.75"
+            />
+            <p className="text-xs text-muted">
+              As parcelas exibidas aqui são informativas; o parcelamento efetivo no pagamento segue o que o Mercado Pago
+              disponibiliza.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 md:sticky md:top-4 md:self-start">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Preview</span>
+              {variantes.length > 1 && (
+                <select
+                  value={Math.min(varianteDoPreview, variantes.length - 1)}
+                  onChange={(e) => setVarianteDoPreview(Number(e.target.value))}
+                  className="h-8 rounded-lg border border-border bg-white px-2 text-xs outline-none focus:border-brand"
+                >
+                  {variantes.map((v, i) => (
+                    <option key={i} value={i}>
+                      Variação {i + 1}
+                      {v.color ? ` — ${v.color}` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface p-4">
+              {precoPreviewCents > 0 ? (
+                <PrecoDetalhe
+                  priceCents={precoPreviewCents}
+                  compareAtCents={compararPreviewCents}
+                  config={{
+                    pixDescontoPercent: numeroOuUndefined(pixPercent),
+                    parcelamentoHabilitado,
+                    vendidosTexto: vendidosTexto.trim() || undefined,
+                    seloTexto: seloTexto.trim() || undefined,
+                    cupomPercent: numeroOuUndefined(cupomPercent),
+                    parcelasSemJuros: numeroOuUndefined(parcelasSemJuros),
+                    parcelasComJuros: numeroOuUndefined(parcelasComJuros),
+                    jurosMensalPercent: numeroOuUndefined(jurosMensal),
+                  }}
+                  marca={marca}
+                  modelo={`${nome}${varianteAtiva?.storageGb ? ` ${varianteAtiva.storageGb}GB` : ""}`}
+                  cor={varianteAtiva?.color ?? ""}
+                  photoSrc={varianteAtiva?.photos[0] ? resolverFotoSrc(varianteAtiva.photos[0]) : undefined}
+                />
+              ) : (
+                <p className="text-sm text-muted">Preencha o preço de uma variação para ver o preview.</p>
+              )}
+            </div>
+          </div>
         </div>
       </Secao>
 
@@ -496,15 +662,23 @@ function ToggleField({
   label,
   name,
   defaultChecked,
+  checked,
+  onChange,
 }: {
   label: string;
   name: string;
   defaultChecked?: boolean;
+  checked?: boolean;
+  onChange?: (valor: boolean) => void;
 }) {
+  const controle =
+    checked === undefined
+      ? { defaultChecked }
+      : { checked, onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked) };
   return (
     <label className="flex items-center justify-between gap-3 rounded-lg border border-border px-3.5 py-2.5 cursor-pointer">
       <span className="text-sm font-medium text-foreground">{label}</span>
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="peer sr-only" />
+      <input type="checkbox" name={name} {...controle} className="peer sr-only" />
       <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-[#e2e4e9] peer-checked:bg-brand transition-colors after:absolute after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
     </label>
   );

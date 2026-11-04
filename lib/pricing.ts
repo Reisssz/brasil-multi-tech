@@ -10,6 +10,8 @@ export type OpcaoParcelamento = {
   installmentCents: number;
   totalCents: number;
   interestFree: boolean;
+  /** Taxa ao mês aplicada (só nas parcelas com juros calculadas por taxa mensal). */
+  monthlyRatePercent?: number;
 };
 
 /**
@@ -33,6 +35,8 @@ export type ConfiguracaoParcelamento = {
   maxParcelasSemJuros: number;
   maxParcelasComJuros: number;
   jurosCompradorPercent: Record<number, number>;
+  /** Quando definido, as parcelas com juros usam essa taxa ao mês (tabela Price) em vez de jurosCompradorPercent. */
+  jurosMensalPercent?: number;
 };
 
 export const CONFIGURACAO_PARCELAMENTO_PADRAO: ConfiguracaoParcelamento = {
@@ -40,6 +44,29 @@ export const CONFIGURACAO_PARCELAMENTO_PADRAO: ConfiguracaoParcelamento = {
   maxParcelasComJuros: 12,
   jurosCompradorPercent: { 11: 20.66, 12: 22.11 },
 };
+
+/** Taxa ao mês usada quando uma parcela com juros não tem percentual configurado. */
+const JUROS_MENSAL_FALLBACK_PERCENT = 2.75;
+
+/** Sobrescritas de parcelamento por produto (vazio = usa a configuração global). */
+export type ParcelamentoDoProduto = {
+  parcelasSemJuros?: number;
+  parcelasComJuros?: number;
+  jurosMensalPercent?: number;
+};
+
+export function resolverConfigParcelamento(
+  global: ConfiguracaoParcelamento,
+  produto: ParcelamentoDoProduto
+): ConfiguracaoParcelamento {
+  const semJuros = produto.parcelasSemJuros ?? global.maxParcelasSemJuros;
+  return {
+    maxParcelasSemJuros: semJuros,
+    maxParcelasComJuros: Math.max(produto.parcelasComJuros ?? global.maxParcelasComJuros, semJuros),
+    jurosCompradorPercent: global.jurosCompradorPercent,
+    jurosMensalPercent: produto.jurosMensalPercent ?? global.jurosMensalPercent,
+  };
+}
 
 /** Todas as opções de parcelamento (sem juros + com juros) pro valor informado, na ordem de 1x até o máximo. */
 export function calcularParcelamento(
@@ -54,7 +81,23 @@ export function calcularParcelamento(
   }
 
   for (let n = config.maxParcelasSemJuros + 1; n <= config.maxParcelasComJuros; n++) {
-    const juros = config.jurosCompradorPercent[n] ?? 0;
+    const taxaMensal =
+      config.jurosMensalPercent ?? (config.jurosCompradorPercent[n] === undefined ? JUROS_MENSAL_FALLBACK_PERCENT : undefined);
+
+    if (taxaMensal !== undefined) {
+      const i = taxaMensal / 100;
+      const installmentCents = Math.round((priceCents * i) / (1 - Math.pow(1 + i, -n)));
+      opcoes.push({
+        count: n,
+        installmentCents,
+        totalCents: installmentCents * n,
+        interestFree: false,
+        monthlyRatePercent: taxaMensal,
+      });
+      continue;
+    }
+
+    const juros = config.jurosCompradorPercent[n];
     const totalCents = Math.round(priceCents * (1 + juros / 100));
     const installmentCents = Math.round(totalCents / n);
     opcoes.push({ count: n, installmentCents, totalCents, interestFree: false });

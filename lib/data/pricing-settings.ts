@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CONFIGURACAO_PARCELAMENTO_PADRAO, ConfiguracaoParcelamento } from "@/lib/pricing";
 
 /**
@@ -8,7 +8,8 @@ import { CONFIGURACAO_PARCELAMENTO_PADRAO, ConfiguracaoParcelamento } from "@/li
  * pra cada componente que precisa do valor dentro do mesmo request.
  */
 export const getConfiguracaoParcelamento = cache(async (): Promise<ConfiguracaoParcelamento> => {
-  const supabase = await createClient();
+  // Admin client: a tabela não tem policy de leitura pública, e o dado não é sensível.
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("pricing_settings")
     .select("max_parcelas_sem_juros, max_parcelas_com_juros, juros_comprador_percent")

@@ -8,7 +8,8 @@ import { ProductIconKey } from "../ui/ProductImage";
 import { ProductGallery } from "./ProductGallery";
 import { StarRating } from "../ui/StarRating";
 import { Badge } from "../ui/Badge";
-import { PriceBlock } from "../ui/PriceBlock";
+import { PrecoDetalhe } from "./PrecoDetalhe";
+import { getMainPhoto } from "@/lib/data/products";
 import { ProductCard } from "./ProductCard";
 import { useCart } from "@/lib/cart-context";
 import { formatBRL } from "@/lib/pricing";
@@ -240,20 +241,36 @@ export function ProductDetail({
             página (sticky no desktop), então preço + botão de comprar já
             aparecem visíveis junto com a foto, sem depender de rolar por
             todos os seletores de cor/capacidade/condição primeiro. */}
-        <div className="flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start bg-surface lg:border lg:border-border rounded-xl lg:p-4">
-          <PriceBlock
+        <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start bg-surface border border-border rounded-xl p-4">
+          <PrecoDetalhe
             priceCents={activeVariant.priceCents}
             compareAtCents={activeVariant.compareAtCents}
-            size="lg"
-            parcelamentoHabilitado={product.parcelamentoHabilitado}
-            pixDescontoPercent={product.pixDescontoPercent}
+            config={product}
+            marca={product.brand}
+            modelo={`${product.name}${activeVariant.storageGb ? ` ${activeVariant.storageGb}GB` : ""}`}
+            cor={activeVariant.color}
+            photoSrc={getMainPhoto(activeVariant)}
           />
 
-          <Link href="/ajuda" className="text-xs font-medium text-brand hover:underline w-fit">
-            Ver as formas de pagamento
-          </Link>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleAddToCart}
+              disabled={activeVariant.stock === 0}
+              className="hidden sm:flex items-center justify-center rounded-md bg-brand hover:bg-brand-dark text-brand-foreground font-bold h-10 text-sm transition-colors disabled:opacity-40"
+            >
+              {added ? "Adicionado ao carrinho ✓" : "Adicionar ao carrinho"}
+            </button>
 
-          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={handleBuyNow}
+              disabled={activeVariant.stock === 0}
+              className="hidden sm:flex items-center justify-center rounded-md bg-brand hover:bg-brand-dark text-brand-foreground font-bold h-10 text-sm transition-colors disabled:opacity-40"
+            >
+              Comprar
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
             <div className="flex items-center border border-border rounded-lg h-10 shrink-0">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -279,22 +296,6 @@ export function ProductDetail({
                 : "Fora de estoque"}
             </span>
           </div>
-
-          <button
-            onClick={handleAddToCart}
-            disabled={activeVariant.stock === 0}
-            className="hidden sm:flex items-center justify-center rounded-lg bg-brand/85 hover:bg-brand text-brand-foreground font-bold h-11 text-sm transition-colors disabled:opacity-40"
-          >
-            {added ? "Adicionado ao carrinho ✓" : "Adicionar ao carrinho"}
-          </button>
-
-          <button
-            onClick={handleBuyNow}
-            disabled={activeVariant.stock === 0}
-            className="hidden sm:flex items-center justify-center rounded-lg bg-brand hover:bg-brand-dark text-brand-foreground font-bold h-11 text-sm transition-colors disabled:opacity-40"
-          >
-            Comprar
-          </button>
 
           {/* Lista de confiança: só afirmações que a loja de fato garante
               (ver /termos e /garantia) — nada de estatística inventada. */}

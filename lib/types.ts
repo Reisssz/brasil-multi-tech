@@ -69,6 +69,16 @@ export interface Product {
   parcelamentoHabilitado: boolean;
   /** Opt-in por produto — só alguns produtos têm desconto no Pix. */
   pixDescontoPercent?: number;
+  /** Texto livre na caixa de compra, ex: "+1000 produtos vendidos". */
+  vendidosTexto?: string;
+  /** Selo vermelho na caixa de compra, ex: "Última unidade". */
+  seloTexto?: string;
+  /** Cupom promocional exibido na caixa de compra (ex: 5 = "Cupom 5% OFF"). */
+  cupomPercent?: number;
+  /** Sobrescrevem a configuração global de parcelamento só para este produto. */
+  parcelasSemJuros?: number;
+  parcelasComJuros?: number;
+  jurosMensalPercent?: number;
 }
 
 export interface CartItem {

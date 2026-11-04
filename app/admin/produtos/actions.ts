@@ -15,6 +15,26 @@ function slugify(texto: string) {
 
 export type EstadoProduto = { erro?: string } | null;
 
+function numeroOpcional(formData: FormData, campo: string) {
+  const bruto = String(formData.get(campo) ?? "").trim();
+  if (!bruto) return null;
+  const n = Number(bruto);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function extrairCaixaDeCompra(formData: FormData) {
+  const parcelasSemJuros = numeroOpcional(formData, "parcelasSemJuros");
+  const parcelasComJuros = numeroOpcional(formData, "parcelasComJuros");
+  return {
+    vendidos_texto: String(formData.get("vendidosTexto") ?? "").trim() || null,
+    selo_texto: String(formData.get("seloTexto") ?? "").trim() || null,
+    cupom_percent: numeroOpcional(formData, "cupomPercent"),
+    parcelas_sem_juros: parcelasSemJuros === null ? null : Math.min(24, Math.round(parcelasSemJuros)),
+    parcelas_com_juros: parcelasComJuros === null ? null : Math.min(24, Math.round(parcelasComJuros)),
+    juros_mensal_percent: numeroOpcional(formData, "jurosMensalPercent"),
+  };
+}
+
 async function verificarAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
@@ -42,6 +62,7 @@ function extrairVariantes(formData: FormData) {
   const storages = formData.getAll("varianteStorage") as string[];
   const condicoes = formData.getAll("varianteCondicao") as string[];
   const precos = formData.getAll("variantePreco") as string[];
+  const precosDe = formData.getAll("varianteComparar") as string[];
   const estoques = formData.getAll("varianteEstoque") as string[];
   const skus = formData.getAll("varianteSku") as string[];
   const descricoes = formData.getAll("varianteDescricao") as string[];
@@ -54,6 +75,7 @@ function extrairVariantes(formData: FormData) {
       storage_gb: storages[i] ? Number(storages[i]) : null,
       condition: condicoes[i] || "novo",
       price_cents: Math.round(Number(precos[i] ?? 0) * 100),
+      compare_at_cents: Number(precosDe[i]) > 0 ? Math.round(Number(precosDe[i]) * 100) : null,
       stock: Number(estoques[i] ?? 0),
       sku: skus[i] || null,
       description: descricoes[i]?.trim() || null,
@@ -105,6 +127,7 @@ export async function criarProduto(_estadoAnterior: EstadoProduto, formData: For
       em_destaque: emDestaque,
       parcelamento_habilitado: parcelamentoHabilitado,
       pix_desconto_percent: pixDescontoPercent,
+      ...extrairCaixaDeCompra(formData),
       ativo: true,
     })
     .select("id")
@@ -179,6 +202,7 @@ export async function atualizarProduto(
       em_destaque: emDestaque,
       parcelamento_habilitado: parcelamentoHabilitado,
       pix_desconto_percent: pixDescontoPercent,
+      ...extrairCaixaDeCompra(formData),
       updated_at: new Date().toISOString(),
     })
     .eq("id", produtoId);
@@ -195,7 +219,14 @@ export async function atualizarProduto(
   const variantes = extrairVariantes(formData);
 
   if (variantes.length > 0) {
-    await supabase.from("product_variants").delete().eq("product_id", produtoId);
+    // Backup pra restaurar se o insert falhar — sem isso o produto ficaria sem variações.
+    const { data: variantesAntigas } = await supabase.from("product_variants").select("*").eq("product_id", produtoId);
+
+    const { error: erroRemocao } = await supabase.from("product_variants").delete().eq("product_id", produtoId);
+    if (erroRemocao) {
+      console.error("[admin/produtos] falha ao remover variantes antigas:", erroRemocao.message);
+      return { erro: `Não foi possível atualizar as variações: ${erroRemocao.message}` };
+    }
 
     const { error: erroVariantes } = await supabase.from("product_variants").insert(
       variantes.map(({ indiceOriginal: _indiceOriginal, ...v }) => ({
@@ -207,7 +238,8 @@ export async function atualizarProduto(
 
     if (erroVariantes) {
       console.error("[admin/produtos] falha ao atualizar variantes:", erroVariantes.message);
-      return { erro: "Produto salvo, mas houve erro ao atualizar as variações." };
+      if (variantesAntigas?.length) await supabase.from("product_variants").insert(variantesAntigas);
+      return { erro: `Não foi possível atualizar as variações: ${erroVariantes.message}` };
     }
   }
 
