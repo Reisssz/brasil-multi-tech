@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   const { data: pendentes, error } = await supabase
     .from("shipments")
     .select("id, order_id, melhor_envio_id")
+    .not("melhor_envio_id", "is", null)
     .limit(100);
 
   if (error) {
