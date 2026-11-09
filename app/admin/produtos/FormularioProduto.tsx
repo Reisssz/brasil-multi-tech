@@ -104,6 +104,8 @@ export default function FormularioProduto({
   const [enviandoPorVariante, setEnviandoPorVariante] = useState<Record<number, number>>({});
   const [erroUploadPorVariante, setErroUploadPorVariante] = useState<Record<number, string | null>>({});
   const inputsRef = useRef<Record<number, HTMLInputElement | null>>({});
+  const [fotoArrastada, setFotoArrastada] = useState<{ variante: number; foto: number } | null>(null);
+  const [fotoSobre, setFotoSobre] = useState<{ variante: number; foto: number } | null>(null);
 
   /**
    * Envia as fotos direto do navegador pro Supabase Storage (em vez de
@@ -163,6 +165,19 @@ export default function FormularioProduto({
   function removerFotoDaVariante(indice: number, url: string) {
     setVariantes((v) =>
       v.map((item, i) => (i === indice ? { ...item, photos: item.photos.filter((p) => p !== url) } : item))
+    );
+  }
+
+  function moverFotoDaVariante(indice: number, de: number, para: number) {
+    if (de === para) return;
+    setVariantes((v) =>
+      v.map((item, i) => {
+        if (i !== indice) return item;
+        const fotos = [...item.photos];
+        const [movida] = fotos.splice(de, 1);
+        fotos.splice(para, 0, movida);
+        return { ...item, photos: fotos };
+      })
     );
   }
 
@@ -377,13 +392,41 @@ export default function FormularioProduto({
                 </p>
 
                 {v.photos.length > 0 && (
+                  <>
                   <div className="flex flex-wrap gap-2.5">
                     {v.photos.map((url, i) => (
-                      <div key={url} className="group relative">
+                      <div
+                        key={url}
+                        draggable
+                        onDragStart={() => setFotoArrastada({ variante: indice, foto: i })}
+                        onDragOver={(e) => {
+                          if (fotoArrastada?.variante !== indice) return;
+                          e.preventDefault();
+                          setFotoSobre({ variante: indice, foto: i });
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (fotoArrastada?.variante === indice) moverFotoDaVariante(indice, fotoArrastada.foto, i);
+                          setFotoArrastada(null);
+                          setFotoSobre(null);
+                        }}
+                        onDragEnd={() => {
+                          setFotoArrastada(null);
+                          setFotoSobre(null);
+                        }}
+                        className={`group relative cursor-grab active:cursor-grabbing ${
+                          fotoArrastada?.variante === indice && fotoArrastada.foto === i ? "opacity-40" : ""
+                        } ${
+                          fotoSobre?.variante === indice && fotoSobre.foto === i && fotoArrastada?.foto !== i
+                            ? "ring-2 ring-brand rounded-lg"
+                            : ""
+                        }`}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={resolverFotoSrc(url)}
                           alt=""
+                          draggable={false}
                           className="h-16 w-16 rounded-lg border border-border object-cover"
                         />
                         <span className="absolute top-1 left-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[9px] font-semibold text-white">
@@ -401,6 +444,10 @@ export default function FormularioProduto({
                       </div>
                     ))}
                   </div>
+                  <p className="text-[11px] text-muted">
+                    Arraste as fotos para mudar a ordem — a primeira é a foto principal.
+                  </p>
+                  </>
                 )}
 
                 <label className="flex items-center gap-2 rounded-lg border border-dashed border-border hover:border-brand hover:bg-brand-light/40 transition-colors px-3 py-2 text-xs font-medium text-brand-dark cursor-pointer w-fit">

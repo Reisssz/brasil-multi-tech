@@ -11,6 +11,7 @@ import { ParcelamentoConfigProvider } from "@/components/providers/ParcelamentoC
 import { SITE } from "@/lib/config";
 import { getCategoriesForShowcaseDb } from "@/lib/data/products-db";
 import { getConfiguracaoParcelamento } from "@/lib/data/pricing-settings";
+import { getConfiguracaoBarraTopo } from "@/lib/data/promo-bar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,6 +65,7 @@ export default async function RootLayout({
 }>) {
   const categories = await getCategoriesForShowcaseDb();
   const configParcelamento = await getConfiguracaoParcelamento();
+  const configBarraTopo = await getConfiguracaoBarraTopo();
 
   return (
     <html
@@ -73,7 +75,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ParcelamentoConfigProvider value={configParcelamento}>
           <CartProvider>
-            <PromoTopBar maxParcelasSemJuros={configParcelamento.maxParcelasSemJuros} />
+            <PromoTopBar config={configBarraTopo} maxParcelasSemJuros={configParcelamento.maxParcelasSemJuros} />
             <TopBar />
             <Header categories={categories} />
             {/* Bloco, não flex: num container flex as margens automáticas do
