@@ -7,7 +7,7 @@ export const getConfiguracaoBarraTopo = cache(async (): Promise<ConfiguracaoBarr
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("promo_bar_settings")
-    .select("ativo, rotulo, mensagens, cta_texto, cta_href")
+    .select("ativo, rotulo, mensagens, cta_texto, cta_href, imagem_url, imagem_largura, imagem_altura")
     .eq("id", 1)
     .single();
 
@@ -22,5 +22,8 @@ export const getConfiguracaoBarraTopo = cache(async (): Promise<ConfiguracaoBarr
     mensagens: Array.isArray(data.mensagens) ? (data.mensagens as unknown[]).filter((m): m is string => typeof m === "string") : [],
     ctaTexto: data.cta_texto,
     ctaHref: data.cta_href,
+    imagemUrl: data.imagem_url ?? null,
+    imagemLargura: data.imagem_largura ?? null,
+    imagemAltura: data.imagem_altura ?? null,
   };
 });

@@ -18,6 +18,23 @@ export type EstadoBarraTopo = { erro?: string; sucesso?: boolean } | null;
 const MAX_MENSAGENS = 10;
 const MAX_TAMANHO_MENSAGEM = 120;
 
+/** URL assinada para o navegador enviar a arte da barra direto ao Storage (sem passar o arquivo pela Server Action). */
+export async function criarUrlUploadBarraTopo(nomeArquivo: string): Promise<{ path?: string; token?: string; erro?: string }> {
+  const supabase = await createClient();
+  if (!(await verificarAdmin(supabase))) return { erro: "Acesso negado." };
+
+  const extensao = nomeArquivo.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "webp";
+  const caminho = `barra-topo/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensao}`;
+
+  const { data, error } = await createAdminClient().storage.from("banners").createSignedUploadUrl(caminho);
+  if (error || !data) {
+    console.error("[admin/barra-topo] falha ao gerar URL de upload:", error?.message);
+    return { erro: 'Não foi possível preparar o upload. Confira se o bucket "banners" existe no Storage.' };
+  }
+
+  return { path: data.path, token: data.token };
+}
+
 export async function atualizarBarraTopo(_estadoAnterior: EstadoBarraTopo, formData: FormData): Promise<EstadoBarraTopo> {
   const supabase = await createClient();
   if (!(await verificarAdmin(supabase))) return { erro: "Acesso negado." };
@@ -30,7 +47,18 @@ export async function atualizarBarraTopo(_estadoAnterior: EstadoBarraTopo, formD
     .map((m) => m.trim())
     .filter(Boolean);
 
-  if (mensagens.length === 0) return { erro: "Informe ao menos uma mensagem (ou desative a barra)." };
+  const imagemUrl = String(formData.get("imagemUrl") ?? "").trim() || null;
+  const imagemLargura = Number(formData.get("imagemLargura") ?? 0) || null;
+  const imagemAltura = Number(formData.get("imagemAltura") ?? 0) || null;
+
+  if (imagemUrl) {
+    const prefixoPermitido = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/banners/barra-topo/`;
+    if (!imagemUrl.startsWith(prefixoPermitido) || !imagemLargura || !imagemAltura) {
+      return { erro: "Imagem inválida. Envie o arquivo novamente." };
+    }
+  }
+
+  if (mensagens.length === 0 && !imagemUrl) return { erro: "Informe ao menos uma mensagem ou envie uma imagem (ou desative a barra)." };
   if (mensagens.length > MAX_MENSAGENS) return { erro: `Use no máximo ${MAX_MENSAGENS} mensagens.` };
   if (mensagens.some((m) => m.length > MAX_TAMANHO_MENSAGEM)) {
     return { erro: `Cada mensagem pode ter até ${MAX_TAMANHO_MENSAGEM} caracteres.` };
@@ -51,6 +79,9 @@ export async function atualizarBarraTopo(_estadoAnterior: EstadoBarraTopo, formD
       mensagens,
       cta_texto: ctaTexto,
       cta_href: ctaHref || "/",
+      imagem_url: imagemUrl,
+      imagem_largura: imagemUrl ? imagemLargura : null,
+      imagem_altura: imagemUrl ? imagemAltura : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

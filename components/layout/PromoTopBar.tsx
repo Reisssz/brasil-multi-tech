@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { ConfiguracaoBarraTopo } from "@/lib/promo-bar";
 
@@ -21,7 +22,27 @@ export function PromoTopBar({
     return () => clearInterval(id);
   }, [mensagens.length]);
 
-  if (!config.ativo || mensagens.length === 0) return null;
+  if (!config.ativo) return null;
+
+  if (config.imagemUrl && config.imagemLargura && config.imagemAltura) {
+    return (
+      <div className="hidden sm:block bg-black">
+        <Link href={config.ctaHref || "/"} className="block">
+          <Image
+            src={config.imagemUrl}
+            width={config.imagemLargura}
+            height={config.imagemAltura}
+            alt={mensagens[0] ?? "Promoção"}
+            sizes="100vw"
+            priority
+            className="w-full h-auto"
+          />
+        </Link>
+      </div>
+    );
+  }
+
+  if (mensagens.length === 0) return null;
 
   return (
     <div className="hidden sm:block bg-gradient-to-r from-brand-dark via-brand to-brand-dark text-white">

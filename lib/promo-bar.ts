@@ -5,6 +5,10 @@ export type ConfiguracaoBarraTopo = {
   mensagens: string[];
   ctaTexto: string;
   ctaHref: string;
+  /** Arte de campanha; quando definida, substitui rótulo/mensagens/botão e a barra inteira vira link para `ctaHref`. */
+  imagemUrl: string | null;
+  imagemLargura: number | null;
+  imagemAltura: number | null;
 };
 
 export const CONFIGURACAO_BARRA_TOPO_PADRAO: ConfiguracaoBarraTopo = {
@@ -18,4 +22,7 @@ export const CONFIGURACAO_BARRA_TOPO_PADRAO: ConfiguracaoBarraTopo = {
   ],
   ctaTexto: "APROVEITE AGORA",
   ctaHref: "/categoria/ofertas",
+  imagemUrl: null,
+  imagemLargura: null,
+  imagemAltura: null,
 };
