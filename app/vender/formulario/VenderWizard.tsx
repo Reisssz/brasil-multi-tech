@@ -569,7 +569,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
             <div className="flex flex-col divide-y divide-border">
               <PerguntaSimNao
-                pergunta="O seu aparelho não liga?"
+                pergunta="O seu aparelho liga?"
                 ajuda='É considerado "ligar" o aparelho que a tela acende, o sistema operacional é iniciado e é possível navegar pelo toque na tela.'
                 valor={!turnsOn}
                 onChange={(v) => setTurnsOn(!v)}
