@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { formatBRL } from "@/lib/pricing";
-import { atualizarStatusPedido, gerarEtiquetaDoPedido } from "./actions";
+import { atualizarStatusPedido, gerarEtiquetaDoPedido, salvarRastreioManual } from "./actions";
 import { GerarEtiquetaButton } from "./GerarEtiquetaButton";
+import { RastreioManualForm } from "./RastreioManualForm";
 
 const ROTULO_STATUS: Record<string, string> = {
   pending: "Aguardando pagamento",
@@ -68,6 +69,8 @@ export default async function AdminPedidoDetalhe({ params }: { params: Promise<{
 
   const acaoAtualizarStatus = atualizarStatusPedido.bind(null, pedido.id);
   const acaoGerarEtiqueta = gerarEtiquetaDoPedido.bind(null, pedido.id);
+  const acaoRastreioManual = salvarRastreioManual.bind(null, pedido.id);
+  const aceitaRastreioManual = envio !== null || ["paid", "preparing", "shipped"].includes(pedido.status);
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 py-10">
@@ -142,7 +145,7 @@ export default async function AdminPedidoDetalhe({ params }: { params: Promise<{
       <Secao titulo="Envio">
         {envio ? (
           <>
-            <Linha label="Status Melhor Envio" valor={envio.status} />
+            <Linha label="Status" valor={envio.status === "manual" ? "Informado manualmente" : envio.status} />
             <Linha label="Rastreio" valor={envio.tracking_code ?? "Aguardando código"} />
             {envio.tracking_url && (
               <a href={envio.tracking_url} target="_blank" className="text-sm text-brand-dark font-medium">
@@ -154,6 +157,15 @@ export default async function AdminPedidoDetalhe({ params }: { params: Promise<{
           <GerarEtiquetaButton action={acaoGerarEtiqueta} />
         ) : (
           <p className="text-sm text-muted">Etiqueta só pode ser gerada depois do pagamento confirmado.</p>
+        )}
+
+        {aceitaRastreioManual && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-3 text-sm font-medium text-foreground">
+              {envio ? "Editar código de rastreio" : "Ou informar o código de rastreio manualmente"}
+            </p>
+            <RastreioManualForm action={acaoRastreioManual} codigoAtual={envio?.tracking_code} urlAtual={envio?.tracking_url} />
+          </div>
         )}
       </Secao>
 
