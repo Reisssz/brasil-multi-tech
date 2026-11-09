@@ -18,8 +18,9 @@ export default async function AdminVenderPrecos() {
       </Link>
       <h1 className="font-display text-2xl font-bold text-foreground mt-2 mb-1">Preços de avaliação</h1>
       <p className="text-sm text-muted mb-6">
-        Valor-base pra um aparelho em condição excelente, 64/128GB — a estimativa automática ajusta a partir
-        daqui conforme as respostas do formulário de venda (armazenamento, tela, bateria, marcas de uso etc).
+        Valor de mercado pra um aparelho em condição excelente, 64/128GB. A estimativa mostrada ao cliente já
+        desconta 30% de margem de revenda e ajusta conforme as respostas do formulário (armazenamento, tela,
+        bateria, marcas de uso etc) — ex: iPhone 11 de R$ 1.000 vira até R$ 700 pro cliente.
       </p>
 
       <NovoPrecoForm />

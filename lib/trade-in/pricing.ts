@@ -18,7 +18,11 @@ export function buildCatalogo(linhas: { brand: string; model: string; valor_cent
 }
 
 const DEFAULT_BASE_PRICE_CENTS = 30000;
-const STORAGE_STEP_MULTIPLIER = 0.06; // cada salto de armazenamento (ex: 128→256GB) soma ~6%
+const STORAGE_STEP_MULTIPLIER = 0.06; // cada salto acima de 64/128GB (ex: 128→256GB) soma ~6%
+
+// O preço-base é o valor de mercado do aparelho; como a loja compra para revender, paga só uma parte dele.
+const MARGEM_REVENDA = 0.3;
+const FATOR_COMPRA = 1 - MARGEM_REVENDA;
 
 export function buscarPrecoBase(
   brand: string,
@@ -59,7 +63,7 @@ const MULT_MARCAS_DE_USO: Record<MarcasDeUso, number> = {
 
 const MULT_BATERIA: Record<SaudeBateria, number> = {
   superior_90: 1,
-  entre_80_90: 0.93,
+  entre_80_90: 1,
   inferior_80: 0.82,
 };
 
@@ -97,12 +101,12 @@ export function calcularEstimativa(
 } {
   const { valorCents: base, encontrado } = buscarPrecoBase(respostas.brand, respostas.model, catalogo);
 
-  let valor = base;
+  let valor = base * FATOR_COMPRA;
 
+  // O preço-base já cobre 64/128GB; só modelos maiores recebem acréscimo.
   if (respostas.storageGb) {
-    if (respostas.storageGb >= 512) valor *= 1 + STORAGE_STEP_MULTIPLIER * 3;
-    else if (respostas.storageGb >= 256) valor *= 1 + STORAGE_STEP_MULTIPLIER * 2;
-    else if (respostas.storageGb >= 128) valor *= 1 + STORAGE_STEP_MULTIPLIER;
+    if (respostas.storageGb >= 512) valor *= 1 + STORAGE_STEP_MULTIPLIER * 2;
+    else if (respostas.storageGb >= 256) valor *= 1 + STORAGE_STEP_MULTIPLIER;
   }
 
   if (deveRejeitar(respostas)) {

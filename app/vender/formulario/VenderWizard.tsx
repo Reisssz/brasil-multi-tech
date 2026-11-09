@@ -554,7 +554,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
           <div className="rounded-2xl border border-border bg-surface p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-foreground">Condições do Aparelho</h2>
-              <span className="text-xs text-muted font-medium">Não / Sim</span>
+              <span className="text-xs text-muted font-medium">Desligado = Não · Ligado = Sim</span>
             </div>
 
             {rejeitado && (
@@ -569,22 +569,22 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
 
             <div className="flex flex-col divide-y divide-border">
               <PerguntaSimNao
-                pergunta="O seu aparelho liga?"
+                pergunta="O seu aparelho não liga?"
                 ajuda='É considerado "ligar" o aparelho que a tela acende, o sistema operacional é iniciado e é possível navegar pelo toque na tela.'
-                valor={turnsOn}
-                onChange={setTurnsOn}
+                valor={!turnsOn}
+                onChange={(v) => setTurnsOn(!v)}
               />
               <PerguntaSimNao
-                pergunta="O aparelho faz e recebe ligações através de rede móvel (sem contar chamadas por internet, tipo WhatsApp)?"
+                pergunta="O aparelho não faz ou não recebe ligações pela rede móvel (sem contar chamadas por internet, tipo WhatsApp)?"
                 ajuda="Considera-se a realização de ligações usando a rede móvel de telefonia."
-                valor={fazRecebeLigacoes}
-                onChange={setFazRecebeLigacoes}
+                valor={!fazRecebeLigacoes}
+                onChange={(v) => setFazRecebeLigacoes(!v)}
               />
               <PerguntaSimNao
-                pergunta="A conectividade com wifi e bluetooth está funcionando normalmente?"
+                pergunta="O wifi ou o bluetooth não está funcionando normalmente?"
                 ajuda="O aparelho precisa conseguir se conectar à rede wifi e navegar, e o bluetooth precisa conseguir receber arquivos."
-                valor={wifiBluetoothOk}
-                onChange={setWifiBluetoothOk}
+                valor={!wifiBluetoothOk}
+                onChange={(v) => setWifiBluetoothOk(!v)}
               />
               <PerguntaOpcoes
                 pergunta="Tem marcas de uso?"
@@ -607,9 +607,9 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                 onChange={setTelaDanificada}
               />
               <PerguntaSimNao
-                pergunta="O aparelho tem leitor biométrico (digital / Face ID) e é possível cadastrar uma nova biometria?"
-                valor={biometriaFunciona}
-                onChange={setBiometriaFunciona}
+                pergunta="O leitor biométrico (digital / Face ID) não funciona ou não é possível cadastrar uma nova biometria?"
+                valor={!biometriaFunciona}
+                onChange={(v) => setBiometriaFunciona(!v)}
               />
               <PerguntaSimNao
                 pergunta="As câmeras do aparelho (frontal e traseira) apresentam algum problema?"
@@ -631,16 +631,8 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
                 valor={pecaNaoGenuina}
                 onChange={setPecaNaoGenuina}
               />
-              <div className="flex items-center gap-6 py-3">
-                <label className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="checkbox" checked={includesBox} onChange={(e) => setIncludesBox(e.target.checked)} />
-                  Tenho a caixa original
-                </label>
-                <label className="flex items-center gap-2 text-sm text-foreground">
-                  <input type="checkbox" checked={hasInvoice} onChange={(e) => setHasInvoice(e.target.checked)} />
-                  Tenho nota fiscal
-                </label>
-              </div>
+              <PerguntaSimNao pergunta="Tenho a caixa original" valor={includesBox} onChange={setIncludesBox} />
+              <PerguntaSimNao pergunta="Tenho nota fiscal" valor={hasInvoice} onChange={setHasInvoice} />
             </div>
 
             <div className="flex items-center justify-between mt-5">
@@ -1258,6 +1250,23 @@ function TipsCard() {
   );
 }
 
+function Interruptor({ ligado, onChange, rotulo }: { ligado: boolean; onChange: (v: boolean) => void; rotulo: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={ligado}
+      aria-label={rotulo}
+      onClick={() => onChange(!ligado)}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${ligado ? "bg-brand" : "bg-[#d5d9e0]"}`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${ligado ? "translate-x-5" : ""}`}
+      />
+    </button>
+  );
+}
+
 function PerguntaSimNao({
   pergunta, ajuda, valor, onChange,
 }: {
@@ -1269,26 +1278,7 @@ function PerguntaSimNao({
         <p className="text-sm font-semibold text-foreground">{pergunta}</p>
         {ajuda && <p className="text-xs text-muted mt-0.5 leading-relaxed">{ajuda}</p>}
       </div>
-      <div className="flex shrink-0 gap-1.5">
-        <button
-          type="button"
-          onClick={() => onChange(false)}
-          className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-            !valor ? "bg-brand text-brand-foreground" : "bg-[#eef0f3] text-muted"
-          }`}
-        >
-          Não
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(true)}
-          className={`h-8 rounded-full px-3 text-xs font-bold transition-colors ${
-            valor ? "bg-brand text-brand-foreground" : "bg-[#eef0f3] text-muted"
-          }`}
-        >
-          Sim
-        </button>
-      </div>
+      <Interruptor ligado={valor} onChange={onChange} rotulo={pergunta} />
     </div>
   );
 }
