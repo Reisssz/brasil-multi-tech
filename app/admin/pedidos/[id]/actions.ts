@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { comprarEtiqueta } from "@/lib/melhor-envio/client";
+import { comprarEtiqueta, dimensoesDaVariante } from "@/lib/melhor-envio/client";
 import { revalidatePath } from "next/cache";
 
 async function verificarAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -93,13 +93,15 @@ export async function gerarEtiquetaDoPedido(
     nome: string;
     quantidade: number;
     precoUnitarioCents: number;
+    larguraCm?: number;
+    alturaCm?: number;
+    comprimentoCm?: number;
+    pesoKg?: number;
   }>;
 
   if (itens.length === 0) {
     return { erro: "Pedido sem itens registrados." };
   }
-
-  const valorSeguradoTotalCents = itens.reduce((soma, item) => soma + item.precoUnitarioCents * item.quantidade, 0);
 
   try {
     const etiqueta = await comprarEtiqueta({
@@ -121,15 +123,14 @@ export async function gerarEtiquetaDoPedido(
         nome: item.nome,
         quantidade: item.quantidade,
         valorUnitarioCents: item.precoUnitarioCents,
-        // Dimensões reais por item não estão no snapshot do pedido — usa
-        // um fallback conservador (mesmo padrão do cálculo de frete no
-        // checkout) só para a chamada de compra da etiqueta.
-        larguraCm: 15,
-        alturaCm: 8,
-        comprimentoCm: 20,
-        pesoKg: 0.4,
+        // Pedidos antigos não têm as medidas no snapshot e caem no fallback padrão.
+        ...dimensoesDaVariante({
+          widthCm: item.larguraCm,
+          heightCm: item.alturaCm,
+          lengthCm: item.comprimentoCm,
+          weightGrams: item.pesoKg ? item.pesoKg * 1000 : undefined,
+        }),
       })),
-      valorSeguradoTotalCents,
     });
 
     await supabaseAdmin.from("shipments").insert({

@@ -91,14 +91,17 @@ async function melhorEnvioFetch<T>(path: string, init?: RequestInit, tentativa =
 
 /** Só o CEP de origem, validado — suficiente pra COTAR frete (calculate não exige nome/documento do remetente). */
 function cepOrigemValidado() {
-  const cepOrigem = SITE.address.zip.replace(/\D/g, "");
+  // MELHOR_ENVIO_CEP_ORIGEM permite alinhar o CEP de origem ao cadastrado no
+  // Melhor Envio sem mexer no endereço exibido no site.
+  const cepBruto = process.env.MELHOR_ENVIO_CEP_ORIGEM || SITE.address.zip;
+  const cepOrigem = cepBruto.replace(/\D/g, "");
 
   if (cepOrigem.length !== 8) {
     // Falha cedo e com mensagem clara em vez de deixar a API do Melhor
     // Envio devolver "cep_origem está invalido" sem contexto nenhum.
     throw new Error(
-      `CEP de origem inválido na configuração da loja (valor atual: "${SITE.address.zip}"). ` +
-        "Configure um CEP real de 8 dígitos em lib/config.ts."
+      `CEP de origem inválido (valor atual: "${cepBruto}"). ` +
+        "Configure um CEP real de 8 dígitos em MELHOR_ENVIO_CEP_ORIGEM ou lib/config.ts."
     );
   }
 
@@ -152,6 +155,8 @@ export type OpcaoFrete = {
   precoOriginalCents: number;
   precoComDescontoCents: number;
   prazoDias: number;
+  /** Valor fixo configurado no admin (não veio do Melhor Envio). */
+  fixo?: boolean;
 };
 
 export type ServicoDescartado = {
@@ -164,17 +169,37 @@ export type ServicoDescartado = {
 const FALLBACK_DIMENSOES = { larguraCm: 15, alturaCm: 8, comprimentoCm: 20, pesoKg: 0.4 };
 
 export function dimensoesDaVariante(v: {
-  weightGrams?: number;
-  widthCm?: number;
-  heightCm?: number;
-  lengthCm?: number;
+  weightGrams?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
+  lengthCm?: number | null;
 }) {
+  // Zero/negativo é tratado como "não cadastrado": a API rejeita ou cota errado.
   return {
-    larguraCm: v.widthCm ?? FALLBACK_DIMENSOES.larguraCm,
-    alturaCm: v.heightCm ?? FALLBACK_DIMENSOES.alturaCm,
-    comprimentoCm: v.lengthCm ?? FALLBACK_DIMENSOES.comprimentoCm,
-    pesoKg: v.weightGrams ? v.weightGrams / 1000 : FALLBACK_DIMENSOES.pesoKg,
+    larguraCm: v.widthCm && v.widthCm > 0 ? v.widthCm : FALLBACK_DIMENSOES.larguraCm,
+    alturaCm: v.heightCm && v.heightCm > 0 ? v.heightCm : FALLBACK_DIMENSOES.alturaCm,
+    comprimentoCm: v.lengthCm && v.lengthCm > 0 ? v.lengthCm : FALLBACK_DIMENSOES.comprimentoCm,
+    pesoKg: v.weightGrams && v.weightGrams > 0 ? v.weightGrams / 1000 : FALLBACK_DIMENSOES.pesoKg,
   };
+}
+
+/**
+ * Reúne todos os itens em UM pacote (maior largura/comprimento, alturas
+ * empilhadas, pesos somados). A mesma função alimenta a cotação e a compra da
+ * etiqueta, então o valor cotado no checkout é o mesmo da etiqueta gerada.
+ */
+export function consolidarPacote(itens: ItemParaFrete[]) {
+  return {
+    width: Math.max(...itens.map((i) => i.larguraCm)),
+    length: Math.max(...itens.map((i) => i.comprimentoCm)),
+    height: itens.reduce((soma, i) => soma + i.alturaCm * i.quantidade, 0),
+    weight: Number(itens.reduce((soma, i) => soma + i.pesoKg * i.quantidade, 0).toFixed(3)),
+  };
+}
+
+function opcoesDeEnvio(itens: ItemParaFrete[]) {
+  const valorSegurado = itens.reduce((soma, i) => soma + i.valorUnitarioCents * i.quantidade, 0) / 100;
+  return { insurance_value: valorSegurado, receipt: false, own_hand: false, non_commercial: true };
 }
 
 // IDs de serviço padrão dos Correios na Melhor Envio — pedimos os dois
@@ -205,15 +230,8 @@ export async function calcularFrete(
     body: JSON.stringify({
       from: { postal_code: cepOrigem },
       to: { postal_code: cepDestino },
-      products: itens.map((item, indice) => ({
-        id: String(indice),
-        width: item.larguraCm,
-        height: item.alturaCm,
-        length: item.comprimentoCm,
-        weight: item.pesoKg,
-        insurance_value: item.valorUnitarioCents / 100,
-        quantity: item.quantidade,
-      })),
+      package: consolidarPacote(itens),
+      options: opcoesDeEnvio(itens),
       // Sem este campo, a API só devolve os serviços que ELA decide (às
       // vezes só SEDEX). Pedindo os dois explicitamente, PAC também é
       // calculado sempre que a transportadora atender o trecho.
@@ -302,7 +320,6 @@ export type DadosCompraEtiqueta = {
     complemento?: string;
   };
   itens: ItemParaFrete[];
-  valorSeguradoTotalCents: number;
 };
 
 export async function comprarEtiqueta(dados: DadosCompraEtiqueta) {
@@ -329,18 +346,8 @@ export async function comprarEtiqueta(dados: DadosCompraEtiqueta) {
         quantity: item.quantidade,
         unitary_value: item.valorUnitarioCents / 100,
       })),
-      volumes: dados.itens.map((item) => ({
-        height: item.alturaCm,
-        width: item.larguraCm,
-        length: item.comprimentoCm,
-        weight: item.pesoKg,
-      })),
-      options: {
-        insurance_value: dados.valorSeguradoTotalCents / 100,
-        receipt: false,
-        own_hand: false,
-        non_commercial: true,
-      },
+      volumes: [consolidarPacote(dados.itens)],
+      options: opcoesDeEnvio(dados.itens),
     }),
   });
 

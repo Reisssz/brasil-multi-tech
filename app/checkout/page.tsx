@@ -131,7 +131,8 @@ export default function CheckoutPage() {
       setOpcoesFrete(dados.opcoes);
       setAvisoFrete(dados.avisoFrete ?? null);
       setFreteGratisAplicado(Boolean(dados.freteGratis));
-      if (dados.freteGratis && dados.opcoes?.[0]) {
+      // Frete fixo traz uma única opção, então já entra selecionada.
+      if ((dados.freteGratis || dados.freteFixo) && dados.opcoes?.[0]) {
         setFreteSelecionado(dados.opcoes[0]);
       }
     } catch {
@@ -161,12 +162,7 @@ export default function CheckoutPage() {
           cpf,
           phone,
           address: { cep, street, numero, complemento, city, state: stateUf },
-          frete: {
-            valorCentavos: freteSelecionado.precoComDescontoCents,
-            nome: freteSelecionado.nome,
-            servicoId: freteSelecionado.id,
-            prazoDias: freteSelecionado.prazoDias,
-          },
+          frete: { servicoId: freteSelecionado.id },
         }),
       });
 
@@ -269,6 +265,11 @@ export default function CheckoutPage() {
                           value={cep}
                           onChange={(e) => {
                             setCep(e.target.value);
+                            // Frete calculado para outro CEP não vale mais (a região pode mudar).
+                            setOpcoesFrete([]);
+                            setFreteSelecionado(null);
+                            setFreteGratisAplicado(false);
+                            setAvisoFrete(null);
                             buscarEnderecoPorCep(e.target.value);
                           }}
                           placeholder="CEP"
@@ -326,7 +327,7 @@ export default function CheckoutPage() {
 
                         {freteGratisAplicado && freteSelecionado?.precoComDescontoCents === 0 && (
                           <p className="rounded-lg bg-success-light px-3 py-2 text-sm font-medium text-success">
-                            🎉 Frete grátis pelo PAC nesse pedido!
+                            🎉 Frete grátis pelo {freteSelecionado.nome} nesse pedido!
                           </p>
                         )}
 

@@ -5,6 +5,7 @@ import { mpPreference } from "@/lib/mercadopago/client";
 import { CartItem } from "@/lib/types";
 import { formatBRL } from "@/lib/pricing";
 import { getConfiguracaoParcelamento } from "@/lib/data/pricing-settings";
+import { cotarFreteDoCarrinho, FRETE_FIXO_ID, SERVICO_ETIQUETA_FRETE_FIXO } from "@/lib/shipping/cotacao";
 
 interface CriarPagamentoBody {
   items: CartItem[];
@@ -13,7 +14,8 @@ interface CriarPagamentoBody {
   cpf: string;
   phone: string;
   address: { cep: string; street: string; numero: string; complemento?: string; city: string; state: string };
-  frete?: { valorCentavos: number; nome: string; servicoId: number; prazoDias: number };
+  // Só o servicoId é aproveitado: nome, prazo e valor vêm da cotação refeita no servidor.
+  frete?: { servicoId: number };
 }
 
 type VarianteBanco = {
@@ -119,7 +121,27 @@ export async function POST(request: NextRequest) {
     (soma, { variante, item }) => soma + variante!.price_cents * item.quantity,
     0
   );
-  const freteCents = body.frete?.valorCentavos ?? 0;
+  // O frete é recotado aqui (fixo por região ou Melhor Envio) e o cliente só escolhe
+  // entre as opções devolvidas — o valor enviado pelo navegador nunca é usado.
+  if (typeof body.frete?.servicoId !== "number") {
+    return NextResponse.json({ error: "Escolha uma opção de frete para continuar." }, { status: 400 });
+  }
+
+  const cotacao = await cotarFreteDoCarrinho(body.address.cep, body.items);
+  if (!cotacao.ok) {
+    return NextResponse.json({ error: cotacao.error }, { status: cotacao.status });
+  }
+
+  const freteEscolhido = cotacao.opcoes.find((o) => o.id === body.frete!.servicoId);
+  if (!freteEscolhido) {
+    return NextResponse.json(
+      { error: "A opção de frete escolhida não está mais disponível. Volte à entrega e calcule o frete novamente." },
+      { status: 409 }
+    );
+  }
+
+  const freteCents = freteEscolhido.precoComDescontoCents;
+  const freteNome = freteEscolhido.fixo ? freteEscolhido.nome : `${freteEscolhido.transportadora} — ${freteEscolhido.nome}`;
 
   // A preferência usa o valor-base dos itens e do frete; as condições de
   // parcelas e juros são aplicadas pelo Mercado Pago conforme a conta.
@@ -127,7 +149,7 @@ export async function POST(request: NextRequest) {
   const totalCents = subtotalCents + freteCents;
   const parcelas = 1;
 
-  const itemsSnapshot = itensResolvidos.map(({ item, variante }) => ({
+  const itemsSnapshot = itensResolvidos.map(({ item, variante }, indice) => ({
     productId: variante!.product_id,
     variantId: item.variantId,
     nome: variante!.products?.name ?? "Produto",
@@ -136,6 +158,11 @@ export async function POST(request: NextRequest) {
     quantidade: item.quantity,
     precoUnitarioCents: variante!.price_cents,
     imagem: variante!.photos?.[0] ?? null,
+    // Mesmas medidas da cotação, para a etiqueta sair com o valor cotado.
+    larguraCm: cotacao.itens[indice].larguraCm,
+    alturaCm: cotacao.itens[indice].alturaCm,
+    comprimentoCm: cotacao.itens[indice].comprimentoCm,
+    pesoKg: cotacao.itens[indice].pesoKg,
   }));
 
   const { data: pedido, error: erroPedido } = await supabase
@@ -154,9 +181,11 @@ export async function POST(request: NextRequest) {
         nome: body.customerName,
         documento: body.cpf,
         telefone: body.phone,
-        frete_nome: body.frete?.nome ?? null,
-        frete_servico_id: body.frete?.servicoId ?? null,
-        frete_prazo_dias: body.frete?.prazoDias ?? null,
+        frete_nome: freteNome,
+        frete_servico_id: freteEscolhido.id === FRETE_FIXO_ID ? SERVICO_ETIQUETA_FRETE_FIXO : freteEscolhido.id,
+        frete_prazo_dias: freteEscolhido.prazoDias,
+        frete_fixo: Boolean(freteEscolhido.fixo),
+        frete_cents: freteCents,
       },
     })
     .select("id")
@@ -197,7 +226,7 @@ export async function POST(request: NextRequest) {
           ? [
               {
                 id: "frete",
-                title: `Frete — ${body.frete?.nome ?? "Envio"}`,
+                title: `Frete — ${freteNome}`,
                 quantity: 1,
                 unit_price: freteCents / 100,
                 currency_id: "BRL",
