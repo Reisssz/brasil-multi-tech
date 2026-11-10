@@ -31,7 +31,19 @@ const REGEX_IMEI = /^\d{15}$/;
 
 /** Catálogo curado (botões de seleção — item 01 do relatório de ajustes). "Outro/Outra" sempre revela um campo livre pra não travar quem tem um modelo fora da lista. */
 const MARCAS_SUGERIDAS = ["Apple", "Samsung", "Motorola", "Xiaomi"];
-const CORES_SUGERIDAS = ["Preto", "Branco", "Prata", "Dourado", "Azul", "Verde", "Roxo", "Rosa"];
+const CORES_SUGERIDAS = ["Amarelo", "Branco", "Preto", "Roxo", "Verde", "Vermelho", "Prata", "Dourado", "Azul", "Rosa"];
+const COR_HEX: Record<string, string> = {
+  Amarelo: "#fde68a", Branco: "#ffffff", Preto: "#000000", Roxo: "#9b7ede", Verde: "#86e06b",
+  Vermelho: "#e11d1d", Prata: "#c0c0c0", Dourado: "#d4af37", Azul: "#3b82f6", Rosa: "#f9a8d4",
+};
+const ARMAZENAMENTOS = [
+  { value: "32", label: "32GB" },
+  { value: "64", label: "64GB" },
+  { value: "128", label: "128GB" },
+  { value: "256", label: "256GB" },
+  { value: "512", label: "512GB" },
+  { value: "1024", label: "1TB" },
+];
 
 export type TradeInRequestRow = {
   id: string;
@@ -446,7 +458,7 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
   const banner = getBanner(effectiveStep, row, rejeitado);
 
   return (
-    <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:px-12 py-8">
+    <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12 py-8">
       <div className="rounded-2xl bg-gradient-to-r from-brand to-brand-dark text-brand-foreground px-6 py-5 mb-8">
         <h1 className="font-display text-xl sm:text-2xl font-bold">{banner.title}</h1>
         <p className="text-sm opacity-90 mt-1">{banner.subtitle}</p>
@@ -455,89 +467,174 @@ export function VenderWizard({ userEmail, perfilNome, perfilTelefone, initialReq
       <StepTracker current={effectiveStep} />
 
       {effectiveStep === "aparelho" && (
-        <div className="max-w-xl mx-auto rounded-2xl border border-border bg-surface p-6">
-          <h2 className="font-bold text-foreground mb-4">Sobre o aparelho</h2>
-          <div className="flex flex-col gap-3">
-            <Select
-              label="Tipo de aparelho"
-              value={category}
-              onChange={setCategory}
-              options={[
-                { value: "celular", label: "Celular" },
-                { value: "notebook", label: "Notebook / Tablet" },
-                { value: "smartwatch", label: "Smartwatch" },
-                { value: "outro", label: "Outro" },
-              ]}
-            />
-            <PerguntaOpcoes
-              pergunta="Marca"
-              valor={brand}
-              onChange={(v) => {
-                setBrand(v);
-                setModel(""); // marca mudou — o modelo escolhido antes pode não existir mais na lista
-              }}
-              opcoes={[...MARCAS_SUGERIDAS.map((m) => ({ value: m, label: m })), { value: "Outra", label: "Outra marca" }]}
-            />
-            {brand === "Outra" && (
-              <Campo label="Qual marca?" value={brandOutra} onChange={setBrandOutra} placeholder="Digite a marca" />
-            )}
+        <div className="flex flex-col gap-5">
+          <div className="grid lg:grid-cols-[1fr_320px] gap-5 items-start">
+            <div className="flex flex-col gap-4">
+              <section className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
+                <h2 className="font-bold text-foreground mb-5">Especificações do aparelho</h2>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <SelectFlutuante
+                    label="Tipo"
+                    value={category}
+                    onChange={setCategory}
+                    options={[
+                      { value: "celular", label: "Celular" },
+                      { value: "notebook", label: "Notebook / Tablet" },
+                      { value: "smartwatch", label: "Smartwatch" },
+                      { value: "outro", label: "Outro" },
+                    ]}
+                  />
+                  <SelectFlutuante
+                    label="Marca"
+                    value={brand}
+                    placeholder="Selecione"
+                    onChange={(v) => {
+                      setBrand(v);
+                      setModel(""); // marca mudou — o modelo escolhido antes pode não existir mais na lista
+                    }}
+                    options={[...MARCAS_SUGERIDAS.map((m) => ({ value: m, label: m })), { value: "Outra", label: "Outra marca" }]}
+                  />
+                  <SelectFlutuante
+                    label="Modelo"
+                    value={model}
+                    placeholder="Selecione"
+                    disabled={brandResolvido.trim().length === 0}
+                    onChange={setModel}
+                    options={[...modelosDaMarca.map((m) => ({ value: m, label: m })), { value: "Outro", label: "Outro modelo" }]}
+                  />
+                </div>
 
-            {brandResolvido.trim().length > 0 && (
-              <>
-                <PerguntaOpcoes
-                  pergunta="Modelo"
-                  valor={model}
-                  onChange={setModel}
-                  opcoes={[...modelosDaMarca.map((m) => ({ value: m, label: m })), { value: "Outro", label: "Outro modelo" }]}
-                />
-                {model === "Outro" && (
-                  <Campo label="Qual modelo?" value={modelOutro} onChange={setModelOutro} placeholder="Ex: iPhone 14 Pro" />
+                {(brand === "Outra" || model === "Outro") && (
+                  <div className="mt-4 grid sm:grid-cols-2 gap-4">
+                    {brand === "Outra" && (
+                      <Campo label="Qual marca?" value={brandOutra} onChange={setBrandOutra} placeholder="Digite a marca" />
+                    )}
+                    {model === "Outro" && (
+                      <Campo label="Qual modelo?" value={modelOutro} onChange={setModelOutro} placeholder="Ex: iPhone 14 Pro" />
+                    )}
+                  </div>
                 )}
-              </>
-            )}
+              </section>
 
-            <Select
-              label="Armazenamento"
-              value={storageGb}
-              onChange={setStorageGb}
-              options={[
-                { value: "", label: "Não sei / não se aplica" },
-                { value: "32", label: "32GB" },
-                { value: "64", label: "64GB" },
-                { value: "128", label: "128GB" },
-                { value: "256", label: "256GB" },
-                { value: "512", label: "512GB" },
-                { value: "1024", label: "1TB" },
-              ]}
-            />
+              <div className="grid sm:grid-cols-[200px_1fr] gap-4">
+                <section className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
+                  <h2 className="font-bold text-foreground mb-4">Capacidade</h2>
+                  <div role="radiogroup" aria-label="Capacidade" className="flex flex-col gap-1">
+                    {ARMAZENAMENTOS.map((a) => {
+                      const selecionado = storageGb === a.value;
+                      return (
+                        <button
+                          key={a.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selecionado}
+                          onClick={() => setStorageGb(a.value)}
+                          className="flex items-center gap-3 py-1.5 text-left text-sm text-foreground"
+                        >
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                              selecionado ? "border-brand" : "border-[#cfcfcf]"
+                            }`}
+                          >
+                            {selecionado && <span className="h-2.5 w-2.5 rounded-full bg-brand" />}
+                          </span>
+                          {a.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
 
-            <PerguntaOpcoes
-              pergunta="Cor"
-              valor={color}
-              onChange={setColor}
-              opcoes={[...CORES_SUGERIDAS.map((c) => ({ value: c, label: c })), { value: "Outra", label: "Outra cor" }]}
-            />
-            {color === "Outra" && (
-              <Campo label="Qual cor?" value={colorOutra} onChange={setColorOutra} placeholder="Digite a cor" />
-            )}
+                <section className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
+                  <h2 className="font-bold text-foreground mb-4">Cor</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {[...CORES_SUGERIDAS, "Outra"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setColor(c)}
+                        aria-pressed={color === c}
+                        className={`flex h-11 min-w-[130px] items-center gap-3 rounded-lg border bg-white px-4 text-sm text-foreground transition-colors ${
+                          color === c ? "border-brand" : "border-transparent hover:border-border"
+                        }`}
+                      >
+                        <span
+                          className="h-4 w-4 rounded-full border border-black/10"
+                          style={{ backgroundColor: COR_HEX[c] ?? "#d4d4d4" }}
+                        />
+                        {c === "Outra" ? "Outra cor" : c}
+                      </button>
+                    ))}
+                  </div>
+                  {color === "Outra" && (
+                    <div className="mt-4 max-w-xs">
+                      <Campo label="Qual cor?" value={colorOutra} onChange={setColorOutra} placeholder="Digite a cor" />
+                    </div>
+                  )}
+                </section>
+              </div>
+            </div>
+
+            <aside className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+              <h3 className="border-b border-border px-6 py-5 text-xl font-bold leading-snug text-brand-dark">
+                Por que vender para a {SITE.name}?
+              </h3>
+              <ul className="flex flex-col gap-6 p-6">
+                {[
+                  {
+                    texto: "Venda segura: contrato digital e conferência de documento antes do pagamento.",
+                    icone: <path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3Zm-3 9l2 2 4-4" />,
+                  },
+                  {
+                    texto: "O pagamento é feito diretamente na sua conta bancária, por Pix ou transferência.",
+                    icone: <path d="M3 7h18v10H3V7Zm9 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM6 10v4m12-4v4" />,
+                  },
+                  {
+                    texto: "Redução do lixo eletrônico: seu aparelho ganha uma nova vida.",
+                    icone: <path d="M7 8l3-4h4l3 5M17 16l-3 4h-4l-3-5M4 13l3-5h3M20 11l-3 5h-3" />,
+                  },
+                ].map((item) => (
+                  <li key={item.texto} className="flex items-center gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand-dark">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        {item.icone}
+                      </svg>
+                    </span>
+                    <span className="text-sm leading-relaxed text-muted">{item.texto}</span>
+                  </li>
+                ))}
+              </ul>
+            </aside>
           </div>
 
-          <button
-            disabled={!aparelhoValido}
-            onClick={() => setLocalStep("condicoes")}
-            className="mt-5 w-full inline-flex h-12 items-center justify-center rounded-full bg-brand hover:bg-brand-dark disabled:opacity-40 text-brand-foreground font-bold text-sm transition-colors"
-          >
-            Continuar
-          </button>
-
-          <LiveEstimateStrip
-            show={aparelhoValido}
-            brand={brandResolvido}
-            model={modelResolvido}
-            storageGb={storageGb}
-            color={colorResolvido}
-            valorCents={ofertas.agoraCents}
-          />
+          <div className="flex flex-col gap-4 rounded-2xl bg-[#f5f5f5] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+              <div className="grid grid-cols-[auto_auto_auto_auto] gap-x-4 gap-y-1 text-xs">
+                <span className="col-span-4 font-bold text-foreground">Resumo</span>
+                <span className="font-bold text-foreground">Marca:</span>
+                <span className="uppercase text-muted">{brandResolvido || "—"}</span>
+                <span className="font-bold text-foreground">Modelo:</span>
+                <span className="uppercase text-muted">{modelResolvido || "—"}</span>
+                <span className="font-bold text-foreground">Capacidade:</span>
+                <span className="uppercase text-muted">{storageGb ? ARMAZENAMENTOS.find((a) => a.value === storageGb)?.label : "—"}</span>
+                <span className="font-bold text-foreground">Cor:</span>
+                <span className="uppercase text-muted">{colorResolvido || "—"}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">Estimativa de valor até:</p>
+                <p className="text-3xl font-extrabold text-success tabular-nums">
+                  {aparelhoValido ? formatBRL(ofertas.agoraCents) : "—"}
+                </p>
+              </div>
+            </div>
+            <button
+              disabled={!aparelhoValido}
+              onClick={() => setLocalStep("condicoes")}
+              className="inline-flex h-14 items-center justify-center rounded-xl bg-brand px-8 text-sm font-bold uppercase text-brand-foreground transition-colors hover:bg-brand-dark disabled:opacity-40"
+            >
+              Confirmar modelo
+            </button>
+          </div>
         </div>
       )}
 
@@ -1258,11 +1355,28 @@ function Interruptor({ ligado, onChange, rotulo }: { ligado: boolean; onChange: 
       aria-checked={ligado}
       aria-label={rotulo}
       onClick={() => onChange(!ligado)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${ligado ? "bg-brand" : "bg-[#d5d9e0]"}`}
+      className={`relative h-8 w-[68px] shrink-0 rounded-full border transition-colors ${
+        ligado ? "border-brand bg-brand" : "border-[#d4d4d4] bg-white"
+      }`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${ligado ? "translate-x-5" : ""}`}
-      />
+        className={`absolute top-1/2 left-1 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full transition-transform ${
+          ligado ? "translate-x-9 bg-white text-brand" : "bg-[#c4c4c4]"
+        }`}
+      >
+        {ligado && (
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8.5l3 3 7-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span
+        className={`absolute top-1/2 -translate-y-1/2 text-xs font-bold ${
+          ligado ? "left-3 text-white" : "right-3 text-[#555]"
+        }`}
+      >
+        {ligado ? "Sim" : "Não"}
+      </span>
     </button>
   );
 }
@@ -1327,21 +1441,34 @@ function Campo({
   );
 }
 
-function Select({
-  label, value, onChange, options,
+function SelectFlutuante({
+  label, value, onChange, options, placeholder, disabled,
 }: {
   label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+  placeholder?: string; disabled?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
-      {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-11 rounded-lg border border-border px-3 text-sm">
+    <div className="relative">
+      <span className="absolute -top-2 left-3 z-10 bg-[#f5f5f5] px-1.5 text-xs text-muted">{label}</span>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-14 w-full appearance-none rounded-lg border border-[#c9c9c9] bg-transparent px-4 pr-10 text-sm text-foreground outline-none focus:border-brand disabled:opacity-50"
+      >
+        {placeholder && <option value="">{placeholder}</option>}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-    </label>
+      <svg
+        width="16" height="16" viewBox="0 0 16 16" fill="none"
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
+      >
+        <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
   );
 }

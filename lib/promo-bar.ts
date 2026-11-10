@@ -9,6 +9,20 @@ export type ConfiguracaoBarraTopo = {
   imagemUrl: string | null;
   imagemLargura: number | null;
   imagemAltura: number | null;
+  /** Cores em #rrggbb; todas nulas = degradê padrão do site. Trechos entre *asteriscos* nos textos usam `corDestaque`. */
+  corFundo: string | null;
+  corTexto: string | null;
+  corDestaque: string | null;
+  corBotao: string | null;
+  corTextoBotao: string | null;
+};
+
+export const CORES_BARRA_TOPO_SUGERIDAS = {
+  corFundo: "#000000",
+  corTexto: "#ffffff",
+  corDestaque: "#f97316",
+  corBotao: "#f97316",
+  corTextoBotao: "#ffffff",
 };
 
 export const CONFIGURACAO_BARRA_TOPO_PADRAO: ConfiguracaoBarraTopo = {
@@ -25,4 +39,9 @@ export const CONFIGURACAO_BARRA_TOPO_PADRAO: ConfiguracaoBarraTopo = {
   imagemUrl: null,
   imagemLargura: null,
   imagemAltura: null,
+  corFundo: null,
+  corTexto: null,
+  corDestaque: null,
+  corBotao: null,
+  corTextoBotao: null,
 };

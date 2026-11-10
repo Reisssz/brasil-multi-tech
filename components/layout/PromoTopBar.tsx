@@ -5,6 +5,19 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { ConfiguracaoBarraTopo } from "@/lib/promo-bar";
 
+/** Trechos entre *asteriscos* ganham a cor de destaque. */
+function TextoComDestaque({ texto, cor }: { texto: string; cor: string | null }) {
+  return texto.split(/\*([^*]+)\*/).map((parte, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="font-extrabold" style={cor ? { color: cor } : undefined}>
+        {parte}
+      </span>
+    ) : (
+      parte
+    )
+  );
+}
+
 /** Tarja promocional acima do TopBar; textos e link são editados em /admin/barra-topo. */
 export function PromoTopBar({
   config,
@@ -44,8 +57,13 @@ export function PromoTopBar({
 
   if (mensagens.length === 0) return null;
 
+  const personalizada = Boolean(config.corFundo);
+
   return (
-    <div className="hidden sm:block bg-gradient-to-r from-brand-dark via-brand to-brand-dark text-white">
+    <div
+      className={`hidden sm:block text-white ${personalizada ? "" : "bg-gradient-to-r from-brand-dark via-brand to-brand-dark"}`}
+      style={personalizada ? { backgroundColor: config.corFundo!, color: config.corTexto ?? undefined } : undefined}
+    >
       {/* Fundo em degradê ocupa a largura toda da tela, mas o conteúdo fica
           preso ao mesmo max-w-7xl/padding do TopBar e do Header logo
           abaixo — assim o texto à esquerda e o CTA à direita alinham
@@ -60,16 +78,23 @@ export function PromoTopBar({
               <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
               <path d="M2 6.5h12M5 2v2M11 2v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            {config.rotulo}
+            <TextoComDestaque texto={config.rotulo} cor={config.corDestaque} />
           </span>
         )}
         <span className="flex-1 flex items-center justify-center px-4 min-w-0 overflow-hidden relative">
           <span key={index} className="animate-fade-in-fast whitespace-nowrap truncate">
-            {mensagens[index % mensagens.length]}
+            <TextoComDestaque texto={mensagens[index % mensagens.length]} cor={config.corDestaque} />
           </span>
         </span>
         {config.ctaTexto && (
-          <span className="flex items-center gap-1 pl-4 shrink-0 whitespace-nowrap border-l border-white/25 text-white/90 group-hover:text-white transition-colors">
+          <span
+            className={`flex items-center gap-1 shrink-0 whitespace-nowrap transition-colors ${
+              config.corBotao
+                ? "px-5 hover:brightness-110"
+                : "pl-4 border-l border-white/25 text-white/90 group-hover:text-white"
+            }`}
+            style={config.corBotao ? { backgroundColor: config.corBotao, color: config.corTextoBotao ?? undefined } : undefined}
+          >
             {config.ctaTexto}
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 transition-transform group-hover:translate-x-0.5">
               <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

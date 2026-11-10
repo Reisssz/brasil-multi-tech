@@ -51,6 +51,23 @@ export async function atualizarBarraTopo(_estadoAnterior: EstadoBarraTopo, formD
   const imagemLargura = Number(formData.get("imagemLargura") ?? 0) || null;
   const imagemAltura = Number(formData.get("imagemAltura") ?? 0) || null;
 
+  // Cores só são gravadas com "personalizar" ligado; sempre #rrggbb para não permitir CSS arbitrário.
+  const personalizar = formData.get("personalizar") === "on";
+  const lerCor = (campo: string) => {
+    const valor = String(formData.get(campo) ?? "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(valor) ? valor : null;
+  };
+  const cores = {
+    cor_fundo: personalizar ? lerCor("corFundo") : null,
+    cor_texto: personalizar ? lerCor("corTexto") : null,
+    cor_destaque: personalizar ? lerCor("corDestaque") : null,
+    cor_botao: personalizar ? lerCor("corBotao") : null,
+    cor_texto_botao: personalizar ? lerCor("corTextoBotao") : null,
+  };
+  if (personalizar && Object.values(cores).some((c) => c === null)) {
+    return { erro: "Escolha todas as cores da barra." };
+  }
+
   if (imagemUrl) {
     const prefixoPermitido = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/banners/barra-topo/`;
     if (!imagemUrl.startsWith(prefixoPermitido) || !imagemLargura || !imagemAltura) {
@@ -82,6 +99,7 @@ export async function atualizarBarraTopo(_estadoAnterior: EstadoBarraTopo, formD
       imagem_url: imagemUrl,
       imagem_largura: imagemUrl ? imagemLargura : null,
       imagem_altura: imagemUrl ? imagemAltura : null,
+      ...cores,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

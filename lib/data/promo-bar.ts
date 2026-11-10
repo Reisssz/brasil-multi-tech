@@ -7,7 +7,9 @@ export const getConfiguracaoBarraTopo = cache(async (): Promise<ConfiguracaoBarr
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("promo_bar_settings")
-    .select("ativo, rotulo, mensagens, cta_texto, cta_href, imagem_url, imagem_largura, imagem_altura")
+    .select(
+      "ativo, rotulo, mensagens, cta_texto, cta_href, imagem_url, imagem_largura, imagem_altura, cor_fundo, cor_texto, cor_destaque, cor_botao, cor_texto_botao"
+    )
     .eq("id", 1)
     .single();
 
@@ -25,5 +27,10 @@ export const getConfiguracaoBarraTopo = cache(async (): Promise<ConfiguracaoBarr
     imagemUrl: data.imagem_url ?? null,
     imagemLargura: data.imagem_largura ?? null,
     imagemAltura: data.imagem_altura ?? null,
+    corFundo: data.cor_fundo ?? null,
+    corTexto: data.cor_texto ?? null,
+    corDestaque: data.cor_destaque ?? null,
+    corBotao: data.cor_botao ?? null,
+    corTextoBotao: data.cor_texto_botao ?? null,
   };
 });

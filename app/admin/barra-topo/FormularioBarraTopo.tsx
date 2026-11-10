@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import { atualizarBarraTopo, criarUrlUploadBarraTopo } from "./actions";
 import { createClient } from "@/lib/supabase/client";
 import type { ConfiguracaoBarraTopo } from "@/lib/promo-bar";
+import { CORES_BARRA_TOPO_SUGERIDAS } from "@/lib/promo-bar";
+import { PromoTopBar } from "@/components/layout/PromoTopBar";
 
 const CLASSE_INPUT = "h-11 rounded-lg border border-border px-3 text-sm outline-none focus:border-brand";
 
@@ -35,6 +37,36 @@ export function FormularioBarraTopo({ config }: { config: ConfiguracaoBarraTopo 
   const [enviando, setEnviando] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
+  const [mensagensTexto, setMensagensTexto] = useState(config.mensagens.join("\n"));
+  const [rotulo, setRotulo] = useState(config.rotulo);
+  const [ctaTexto, setCtaTexto] = useState(config.ctaTexto);
+  const [ctaHref, setCtaHref] = useState(config.ctaHref);
+  const [personalizar, setPersonalizar] = useState(Boolean(config.corFundo));
+  const [cores, setCores] = useState({
+    corFundo: config.corFundo ?? CORES_BARRA_TOPO_SUGERIDAS.corFundo,
+    corTexto: config.corTexto ?? CORES_BARRA_TOPO_SUGERIDAS.corTexto,
+    corDestaque: config.corDestaque ?? CORES_BARRA_TOPO_SUGERIDAS.corDestaque,
+    corBotao: config.corBotao ?? CORES_BARRA_TOPO_SUGERIDAS.corBotao,
+    corTextoBotao: config.corTextoBotao ?? CORES_BARRA_TOPO_SUGERIDAS.corTextoBotao,
+  });
+
+  const previa: ConfiguracaoBarraTopo = {
+    ...config,
+    ativo: true,
+    rotulo,
+    mensagens: mensagensTexto.split("\n").map((m) => m.trim()).filter(Boolean),
+    ctaTexto,
+    ctaHref,
+    imagemUrl: imagem?.url ?? null,
+    imagemLargura: imagem?.width ?? null,
+    imagemAltura: imagem?.height ?? null,
+    corFundo: personalizar ? cores.corFundo : null,
+    corTexto: personalizar ? cores.corTexto : null,
+    corDestaque: personalizar ? cores.corDestaque : null,
+    corBotao: personalizar ? cores.corBotao : null,
+    corTextoBotao: personalizar ? cores.corTextoBotao : null,
+  };
+
   async function enviarImagem(arquivo: File | undefined) {
     if (!arquivo) return;
     setErroUpload(null);
@@ -65,6 +97,12 @@ export function FormularioBarraTopo({ config }: { config: ConfiguracaoBarraTopo 
 
   return (
     <form action={formAction} className="flex flex-col gap-5 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs font-medium text-muted">Prévia (aparece só em telas maiores)</p>
+        <div className="pointer-events-none overflow-hidden rounded-lg border border-border [&>div]:!block">
+          <PromoTopBar config={previa} maxParcelasSemJuros={10} />
+        </div>
+      </div>
       <label className="flex items-center gap-3 text-sm font-medium text-foreground">
         <input type="checkbox" name="ativo" defaultChecked={config.ativo} className="h-4 w-4 accent-[color:var(--brand)]" />
         Exibir a barra no topo do site
@@ -116,28 +154,67 @@ export function FormularioBarraTopo({ config }: { config: ConfiguracaoBarraTopo 
         <textarea
           name="mensagens"
           rows={6}
-          defaultValue={config.mensagens.join("\n")}
+          value={mensagensTexto}
+          onChange={(e) => setMensagensTexto(e.target.value)}
           className="rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-brand resize-y"
         />
         <span className="text-xs font-normal text-muted">
-          Use {"{parcelas}"} para inserir automaticamente o máximo de parcelas sem juros. Até 10 mensagens de 120
-          caracteres.
+          Use {"{parcelas}"} para inserir automaticamente o máximo de parcelas sem juros e *asteriscos* para realçar um
+          trecho com a cor de destaque (ex: COMEÇOU A *BLACK* DA TROCA). Até 10 mensagens de 120 caracteres.
         </span>
       </label>
 
       <div className="grid sm:grid-cols-3 gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Texto fixo à esquerda
-          <input name="rotulo" defaultValue={config.rotulo} maxLength={40} placeholder="Opcional" className={CLASSE_INPUT} />
+          <input name="rotulo" value={rotulo} onChange={(e) => setRotulo(e.target.value)} maxLength={40} placeholder="Opcional" className={CLASSE_INPUT} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Texto do botão
-          <input name="ctaTexto" defaultValue={config.ctaTexto} maxLength={30} placeholder="Opcional" className={CLASSE_INPUT} />
+          <input name="ctaTexto" value={ctaTexto} onChange={(e) => setCtaTexto(e.target.value)} maxLength={30} placeholder="Opcional" className={CLASSE_INPUT} />
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Link da barra
-          <input name="ctaHref" defaultValue={config.ctaHref} placeholder="/categoria/ofertas" className={CLASSE_INPUT} />
+          <input name="ctaHref" value={ctaHref} onChange={(e) => setCtaHref(e.target.value)} placeholder="/categoria/ofertas" className={CLASSE_INPUT} />
         </label>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+        <label className="flex items-center gap-3 text-sm font-medium text-foreground">
+          <input
+            type="checkbox"
+            name="personalizar"
+            checked={personalizar}
+            onChange={(e) => setPersonalizar(e.target.checked)}
+            className="h-4 w-4 accent-[color:var(--brand)]"
+          />
+          Personalizar cores (senão, usa o degradê padrão do site)
+        </label>
+
+        {personalizar && (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {(
+              [
+                ["corFundo", "Fundo"],
+                ["corTexto", "Texto"],
+                ["corDestaque", "Destaque"],
+                ["corBotao", "Botão"],
+                ["corTextoBotao", "Texto do botão"],
+              ] as const
+            ).map(([campo, rotuloCampo]) => (
+              <label key={campo} className="flex flex-col gap-1 text-xs font-medium text-muted">
+                {rotuloCampo}
+                <input
+                  type="color"
+                  name={campo}
+                  value={cores[campo]}
+                  onChange={(e) => setCores((atual) => ({ ...atual, [campo]: e.target.value }))}
+                  className="h-10 w-full cursor-pointer rounded-lg border border-border bg-transparent p-1"
+                />
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {estado?.erro && <p className="text-sm text-red-600">{estado.erro}</p>}
